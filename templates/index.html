@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NATIONAL UNIVERSITY-MANILA | Laboratory Portal</title>
+    <style>
+        :root {
+            --bg-dark: #071B33;
+            --bg-page: #EEF3F8;
+            --card-bg: #FFFFFF;
+            --text-light: #102A43;
+            --accent-blue: #0066B3;
+            --gold: #F4B41A;
+            --border-color: #C9D6E2;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-page);
+            margin: 0;
+            padding: 0;
+            color: var(--text-light);
+        }
+
+        /* Topbar Header matching theme.py */
+        .topbar {
+            background-color: var(--bg-dark);
+            color: #FFFFFF;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 4px solid var(--gold);
+        }
+
+        .topbar h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .container {
+            max-width: 1050px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        /* Table Styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th {
+            background-color: var(--bg-dark);
+            color: #FFFFFF;
+            text-align: left;
+            padding: 12px;
+            font-size: 14px;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+        }
+
+        tr:hover {
+            background-color: #F8FAFC;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .in-stock { background: #DFF5E5; color: #1E7E4D; }
+        .low-stock { background: #FFF3CD; color: #856404; }
+        .out-stock { background: #F8D7DA; color: #721C24; }
+    </style>
+</head>
+<body>
+
+    <div class="topbar">
+        <h1>NATIONAL UNIVERSITY-MANILA | Laboratory Portal</h1>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h2>Hardware Inventory</h2>
+            <table id="hardware-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Stock Qty</th>
+                        <th>Unit Price</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function fetchHardware() {
+            const res = await fetch('/api/hardware');
+            const data = await res.json();
+            const tbody = document.querySelector('#hardware-table tbody');
+            tbody.innerHTML = '';
+            
+            data.forEach(item => {
+                const badgeClass = item.status === 'IN STOCK' ? 'in-stock' : (item.status === 'LOW STOCK' ? 'low-stock' : 'out-stock');
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${item.id}</strong></td>
+                        <td>${item.name}</td>
+                        <td>${item.category}</td>
+                        <td>${item.stock_qty}</td>
+                        <td>₱${item.unit_price.toFixed(2)}</td>
+                        <td><span class="badge ${badgeClass}">${item.status}</span></td>
+                    </tr>
+                `;
+            });
+        }
+        fetchHardware();
+    </script>
+</body>
+</html>

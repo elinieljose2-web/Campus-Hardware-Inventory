@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register Account | Laboratory Portal</title>
+    <style>
+        :root { --navy: #071B33; --page: #EEF3F8; --blue: #0066B3; --blue-dark: #004F8A; --gold: #F4B41A; --text: #102A43; --muted: #52677D; --border: #C9D6E2; }
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--page); font-family: 'Segoe UI', Tahoma, sans-serif; color: var(--text); }
+        .shell { width: min(460px, calc(100% - 32px)); background: #FFFFFF; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(7, 27, 51, 0.10); overflow: hidden; }
+        .header { background: var(--navy); border-bottom: 4px solid var(--gold); color: #FFFFFF; padding: 22px 26px; }
+        .header strong { display: block; font-size: 18px; }
+        .header span { display: block; margin-top: 5px; color: #D6E4F0; font-size: 13px; }
+        .content { padding: 26px; }
+        h1 { margin: 0 0 6px; font-size: 24px; }
+        .intro { margin: 0 0 22px; color: var(--muted); font-size: 14px; }
+        .alert { margin-bottom: 14px; padding: 10px 12px; border-radius: 4px; background: #F8D7DA; color: #721C24; font-size: 13px; }
+        label { display: block; margin: 15px 0 6px; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+        input, select { width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 15px; background: #FFFFFF; }
+        input:focus { outline: 2px solid rgba(0, 102, 179, 0.18); border-color: var(--blue); }
+        button { width: 100%; margin-top: 22px; padding: 12px; border: 0; border-radius: 4px; background: var(--blue); color: #FFFFFF; font-size: 15px; font-weight: 700; cursor: pointer; }
+        button:hover { background: var(--blue-dark); }
+        .back { display: block; margin-top: 18px; color: var(--blue); text-align: center; text-decoration: none; font-size: 14px; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <header class="header"><strong>NATIONAL UNIVERSITY-MANILA</strong><span>Laboratory Asset Management Portal</span></header>
+        <div class="content">
+            <h1>Register Account</h1>
+            <p class="intro">Create a student account to reserve laboratory equipment.</p>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}<div class="alert">{{ message }}</div>{% endfor %}
+            {% endwith %}
+            <form method="POST">
+                <label for="username">Username</label>
+                <input id="username" name="username" type="text" required autocomplete="username">
+                <label for="email">Email</label>
+                <input id="email" name="email" type="email" required autocomplete="email">
+                <label for="role">Account Type</label>
+                <select id="role" name="role" required>
+                    <option value="">Select account type</option>
+                    <option value="STUDENT">Student</option>
+                    <option value="ADMIN">Administrator</option>
+                </select>
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" required autocomplete="new-password">
+                <label for="confirm_password">Confirm Password</label>
+                <input id="confirm_password" name="confirm_password" type="password" required autocomplete="new-password">
+                <label for="recovery_keyword">Recovery Keyword</label>
+                <input id="recovery_keyword" name="recovery_keyword" type="text" required minlength="3" autocomplete="off">
+                <small style="display:block; margin-top:6px; color:var(--muted);">Keep this keyword private. It is required to reset your password.</small>
+                <button type="submit">Create Account</button>
+            </form>
+            <a class="back" href="{{ url_for('login') }}">Back to Login</a>
+        </div>
+    </main>
+</body>
+</html>

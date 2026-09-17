@@ -1,0 +1,198 @@
+2026-08-06 19:53:36 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-08-06 19:56:15 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-08-06 19:56:25 - [INFO] - AppLogger - User 'eliniel' logged in successfully.
+2026-08-06 20:03:02 - [INFO] - AppLogger - Hardware item added: 'Arduino Uno Rev3' (Status: In Stock)
+2026-08-06 20:03:21 - [INFO] - AppLogger - Hardware item added: 'Raspberry Pi 4 Model B (4GB)' (Status: In Stock)
+2026-08-06 20:03:48 - [INFO] - AppLogger - Hardware item added: 'ESP32 Development Board' (Status: In Stock)
+2026-08-06 20:04:31 - [INFO] - AppLogger - Hardware item added: 'Breadboard (830 Point)' (Status: In Stock)
+2026-08-06 20:05:00 - [INFO] - AppLogger - Hardware item added: 'DE10-Lite FPGA Board' (Status: Low Stock)
+2026-08-06 20:06:23 - [INFO] - AppLogger - Hardware item added: 'Logic Analyzer' (Status: Low Stock)
+2026-08-06 20:06:45 - [INFO] - AppLogger - Hardware item added: 'Servo Motor' (Status: Low Stock)
+2026-08-06 20:07:07 - [INFO] - AppLogger - Hardware item added: 'Ultrasonic Sensor' (Status: Out of Stock)
+2026-08-06 20:07:30 - [INFO] - AppLogger - Hardware item added: 'USB-TTL Cable' (Status: Out of Stock)
+2026-08-06 20:07:51 - [INFO] - AppLogger - Hardware item added: 'DHT11 Sensor' (Status: In Stock)
+2026-08-06 20:08:08 - [WARNING] - AppLogger - Validation Error: Quantity must be an integer and price must be a valid number.
+2026-08-06 20:08:26 - [INFO] - AppLogger - Hardware item added: 'servo motor' (Status: Low Stock)
+2026-08-06 20:08:38 - [INFO] - AppLogger - Inventory report successfully exported to 'inventory_report.csv'.
+2026-08-06 20:12:58 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-08-06 20:13:08 - [INFO] - AppLogger - User 'eliniel' logged in successfully.
+2026-08-06 20:13:16 - [INFO] - AppLogger - Hardware Item ID 11 deleted.
+2026-08-06 20:13:52 - [INFO] - AppLogger - Hardware item added: 'Servo Motor' (Status: Low Stock)
+2026-08-06 20:14:03 - [INFO] - AppLogger - Hardware Item ID 12 deleted.
+2026-08-06 20:21:07 - [INFO] - AppLogger - User 'User' logged out.
+2026-08-06 20:21:16 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-08-06 20:21:26 - [INFO] - AppLogger - User 'eliniel' logged in successfully.
+2026-08-06 20:21:59 - [INFO] - AppLogger - User 'User' logged out.
+2026-08-06 20:22:10 - [INFO] - AppLogger - User 'eliniel' logged in successfully.
+2026-08-06 20:22:14 - [INFO] - AppLogger - Inventory report successfully exported to 'inventory_report.csv'.
+2026-08-06 20:31:29 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-08-06 20:31:46 - [WARNING] - AppLogger - Failed login attempt for username: 'eliniel'
+2026-08-06 20:31:56 - [INFO] - AppLogger - User 'eliniel' logged in successfully.
+2026-08-15 00:13:25 - [INFO] - AppLogger - Successful login: 'eliniel'
+2026-08-15 00:14:19 - [WARNING] - AppLogger - Registration validation failed for username 'eli': 1 validation error for UserRegistration
+password
+  Value error, Password must contain at least one special character (@#$%^&*). [type=value_error, input_value='Hardware_02', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+2026-08-15 00:14:45 - [INFO] - AppLogger - New user registered successfully: 'eli'
+2026-08-15 00:15:11 - [WARNING] - AppLogger - Failed login attempt for unknown username 'eli02'.
+2026-08-15 00:15:31 - [WARNING] - AppLogger - Failed login attempt for unknown username 'eliniel02@gmail.com'.
+2026-08-15 00:15:37 - [WARNING] - AppLogger - Failed login attempt for unknown username 'eliniel02@gmail.com'.
+2026-08-15 00:15:49 - [WARNING] - AppLogger - Failed login attempt for unknown username 'eli02'.
+2026-08-15 00:15:55 - [WARNING] - AppLogger - Failed login attempt for unknown username 'eli02'.
+2026-08-15 00:20:57 - [INFO] - AppLogger - Successful login: 'eliniel'
+2026-08-15 00:21:03 - [INFO] - AppLogger - User logged out: 'eliniel'
+2026-08-15 00:23:27 - [INFO] - AppLogger - Successful login: 'eliniel'
+2026-08-15 00:23:32 - [INFO] - AppLogger - User logged out: 'eliniel'
+2026-08-15 00:24:43 - [INFO] - AppLogger - Successful login: 'eliniel'
+2026-08-15 00:24:49 - [INFO] - AppLogger - User logged out: 'eliniel'
+2026-08-15 00:26:16 - [INFO] - AppLogger - Successful login: 'eliniel'
+2026-08-15 00:26:48 - [INFO] - AppLogger - User logged out: 'eliniel'
+2026-08-15 00:27:36 - [WARNING] - AppLogger - Registration validation failed for username 'lei': 1 validation error for UserRegistration
+email
+  Value error, Please enter a valid email address. [type=value_error, input_value='lei', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+2026-08-15 00:27:55 - [WARNING] - AppLogger - Registration validation failed for username 'lei': 1 validation error for UserRegistration
+password
+  Value error, Password must contain at least one special character (@#$%^&*). [type=value_error, input_value='Hardware02', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+2026-08-15 00:28:08 - [INFO] - AppLogger - New user registered successfully: 'lei'
+2026-08-15 00:28:33 - [WARNING] - AppLogger - Failed login attempt for unknown username 'lei@gmail.com'.
+2026-08-15 00:28:39 - [WARNING] - AppLogger - Failed login attempt for unknown username 'lei02@gmail.com'.
+2026-08-15 00:28:46 - [INFO] - AppLogger - Successful login: 'lei'
+2026-08-15 00:28:59 - [INFO] - AppLogger - User logged out: 'lei'
+2026-08-15 00:32:02 - [INFO] - AppLogger - Successful login: 'eliniel'
+2026-08-15 00:32:20 - [INFO] - AppLogger - User logged out: 'eliniel'
+2026-08-20 10:07:36 - [WARNING] - AppLogger - Failed login for 'eliniel'. Attempts: 1/3
+2026-08-20 10:07:43 - [WARNING] - AppLogger - Failed login for 'eli'. Attempts: 1/3
+2026-08-20 10:07:51 - [WARNING] - AppLogger - Failed login attempt for unknown username 'eliniel2'.
+2026-08-20 10:09:56 - [INFO] - AppLogger - Successful login: 'eliniel'
+2026-08-20 10:10:08 - [INFO] - AppLogger - User logged out: 'eliniel'
+2026-08-20 10:23:05 - [INFO] - AppLogger - Successful login: 'eliniel'
+2026-08-20 10:23:08 - [INFO] - AppLogger - User logged out: 'eliniel'
+2026-08-20 10:37:24 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-08-20 10:37:37 - [INFO] - AppLogger - Successful login: 'eliniel'
+2026-08-20 10:37:46 - [INFO] - AppLogger - User logged out: 'eliniel'
+2026-08-20 10:40:13 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-08-20 10:40:25 - [INFO] - AppLogger - Successful login: 'eliniel'
+2026-08-20 10:40:30 - [INFO] - AppLogger - User logged out: 'eliniel'
+2026-08-20 10:43:19 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-08-20 10:43:47 - [WARNING] - AppLogger - Registration validation failed for username 'lei2': 1 validation error for UserRegistration
+password
+  Value error, Password must contain at least one special character (@#$%^&*). [type=value_error, input_value='Password123', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+2026-08-20 10:45:23 - [WARNING] - AppLogger - Registration validation failed for username 'lei2': 1 validation error for UserRegistration
+email
+  Value error, Please enter a valid email address. [type=value_error, input_value='lei2.com', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+2026-08-20 10:46:13 - [WARNING] - AppLogger - Registration failed: email 'eliniel02@gmail.com' already exists.
+2026-08-20 10:47:57 - [WARNING] - AppLogger - Failed login for 'eliniel'. Attempts: 1/3
+2026-08-20 10:48:10 - [WARNING] - AppLogger - Failed login for 'eliniel'. Attempts: 2/3
+2026-08-20 10:48:16 - [WARNING] - AppLogger - Account locked for 30 seconds after 3 failed attempts: 'eliniel'
+2026-08-20 11:04:32 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-08-20 11:06:37 - [WARNING] - AppLogger - Registration validation failed for 'user123': 2 validation errors for UserRegistration
+email
+  Value error, Please enter a valid email address. [type=value_error, input_value='user123.com', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+password
+  Value error, Password must be at least 8 characters long. [type=value_error, input_value='pass123', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+2026-08-20 11:07:40 - [WARNING] - AppLogger - Registration validation failed for 'student1': 1 validation error for UserRegistration
+password
+  Value error, Password must contain at least one special character (@#$%^&*). [type=value_error, input_value='Password123!', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+2026-08-20 11:07:52 - [INFO] - AppLogger - New user registered: 'student1' with role 'USER'.
+2026-08-20 11:08:26 - [INFO] - AppLogger - Successful login: 'student1' (Role: USER)
+2026-08-20 11:08:45 - [INFO] - AppLogger - User logged out: 'student1'
+2026-08-20 11:11:32 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-08-20 11:12:23 - [WARNING] - AppLogger - Failed login for 'student1'. Attempts: 1/3
+2026-08-20 11:12:28 - [WARNING] - AppLogger - Failed login for 'student1'. Attempts: 2/3
+2026-08-20 11:12:32 - [WARNING] - AppLogger - Account locked after 3 failed attempts: 'student1'
+2026-08-20 11:13:29 - [WARNING] - AppLogger - Failed login for 'admin'. Attempts: 1/3
+2026-08-20 11:16:59 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-08-20 11:18:02 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-08-20 11:21:26 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-08-20 11:27:42 - [WARNING] - AppLogger - Registration validation failed for 'student1': 1 validation error for UserRegistration
+password
+  Value error, Password must contain at least one special character (@#$%^&*). [type=value_error, input_value='Password123!', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/value_error
+2026-08-20 11:27:50 - [INFO] - AppLogger - New user registered: 'student1' with role 'USER'.
+2026-08-20 11:28:44 - [WARNING] - AppLogger - Failed login for 'student1'. Attempts: 1/3
+2026-08-20 11:28:51 - [WARNING] - AppLogger - Failed login for 'student1'. Attempts: 2/3
+2026-08-20 11:28:55 - [WARNING] - AppLogger - Account locked after 3 failed attempts: 'student1'
+2026-08-20 11:29:53 - [INFO] - AppLogger - Password reset request submitted for user 'student1'.
+2026-08-20 11:31:20 - [INFO] - AppLogger - Successful login: 'admin' (Role: ADMIN)
+2026-08-20 11:32:23 - [INFO] - AppLogger - User logged out: 'admin'
+2026-08-20 11:33:12 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-08-20 11:33:52 - [INFO] - AppLogger - Successful login: 'admin' (Role: ADMIN)
+2026-08-20 11:34:49 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-08-20 11:35:16 - [INFO] - AppLogger - Successful login: 'admin' (Role: ADMIN)
+2026-08-20 11:45:42 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-08-20 11:46:02 - [INFO] - AppLogger - Successful login: 'admin' (Role: ADMIN)
+2026-08-26 21:13:03 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-09-03 10:54:38 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-09-03 11:03:09 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-09-03 11:03:21 - [WARNING] - AppLogger - Failed login attempt for unknown username 'eliniel'.
+2026-09-03 11:03:28 - [WARNING] - AppLogger - Failed login attempt for unknown username 'eliniel'.
+2026-09-03 11:03:33 - [WARNING] - AppLogger - Failed login attempt for unknown username 'eliniel'.
+2026-09-03 11:03:36 - [WARNING] - AppLogger - Failed login attempt for unknown username 'eliniel'.
+2026-09-03 11:13:01 - [INFO] - AppLogger - Hardware Inventory database initialized successfully.
+2026-09-03 11:25:45 - WARNING - Failed login attempt #1 for user: admin
+2026-09-03 11:26:07 - INFO - New user registered: admin1
+2026-09-03 11:26:11 - WARNING - Failed login attempt #2 for user: admin
+2026-09-03 11:26:21 - ERROR - Account locked due to 3 failed login attempts: admin
+2026-09-03 11:26:35 - INFO - User logged in successfully: admin1
+2026-09-03 11:26:52 - INFO - User logged out: admin1
+2026-09-03 11:27:06 - INFO - User logged in successfully: admin1
+2026-09-03 11:29:29 - WARNING - Failed login attempt for non-existent user: admin1
+2026-09-03 11:29:35 - WARNING - Failed login attempt for non-existent user: admin1
+2026-09-03 11:29:53 - INFO - New user registered: admin 1
+2026-09-03 11:29:56 - WARNING - Failed login attempt for non-existent user: admin1
+2026-09-03 11:30:00 - WARNING - Failed login attempt for non-existent user: admin1
+2026-09-03 11:30:09 - WARNING - Failed login attempt for non-existent user: admin1
+2026-09-03 11:30:11 - WARNING - Failed login attempt for non-existent user: admin1
+2026-09-03 11:31:18 - WARNING - Failed login attempt for non-existent user: admin1
+2026-09-03 11:31:48 - INFO - New user registered: eliniel1
+2026-09-03 11:32:01 - WARNING - Failed login attempt #1 for user: eliniel1
+2026-09-03 11:32:13 - INFO - User logged in successfully: eliniel1
+2026-09-03 11:32:49 - INFO - Inventory exported to C:/Users/fajar/OneDrive/Desktop/ELI FILES/VSCODE/LAB 3 SUPPLEMENTARY/inventory_report.csv
+2026-09-03 11:35:51 - INFO - User logged in successfully: eliniel1
+2026-09-03 11:35:53 - INFO - User logged in successfully: eliniel1
+2026-09-03 11:35:59 - INFO - User logged in successfully: eliniel1
+2026-09-03 11:36:25 - INFO - User logged in successfully: eliniel1
+2026-09-03 11:38:30 - INFO - User logged in successfully: eliniel1
+2026-09-03 11:40:32 - INFO - User logged in successfully: eliniel1
+2026-09-03 11:43:52 - INFO - User logged in successfully: eliniel1
+2026-09-03 11:44:43 - INFO - Hardware item added: 'Arduino' (Status: In Stock)
+2026-09-03 11:45:15 - INFO - Hardware item added: 'Arduino' (Status: In Stock)
+2026-09-03 11:51:04 - INFO - User logged in successfully: eliniel1
+2026-09-03 11:51:23 - INFO - Hardware Item ID 2 deleted.
+2026-09-03 11:54:23 - INFO - User logged in successfully: eliniel1
+2026-09-03 11:54:57 - WARNING - Duplicate item blocked: 'Arduino' in category 'Microcontroller'
+2026-09-03 12:02:20 - INFO - User logged in: eliniel1
+2026-09-03 12:02:44 - INFO - Hardware item added: 'ESP32' (Status: In Stock)
+2026-09-03 12:08:30 - INFO - User logged in: eliniel1
+2026-09-03 12:13:10 - INFO - Hardware item added: '555' (Status: Low Stock)
+2026-09-03 12:18:28 - INFO - User logged in: eliniel1 (STUDENT)
+2026-09-03 12:18:42 - INFO - User 'eliniel1' borrowed 2x 'Arduino' (ID: 1).
+2026-09-03 12:19:20 - INFO - New user registered: admin1 (Role: ADMIN)
+2026-09-03 12:19:37 - INFO - User logged in: admin1 (ADMIN)
+2026-09-03 12:23:46 - INFO - User logged in: eliniel1 (STUDENT)
+2026-09-03 12:23:47 - INFO - User logged in: eliniel1 (STUDENT)
+2026-09-03 12:23:48 - INFO - User logged in: eliniel1 (STUDENT)
+2026-09-03 12:23:48 - INFO - User logged in: eliniel1 (STUDENT)
+2026-09-03 12:23:50 - INFO - User logged in: eliniel1 (STUDENT)
+2026-09-03 12:23:54 - INFO - User logged in: eliniel1 (STUDENT)
+2026-09-03 12:23:54 - INFO - User logged in: eliniel1 (STUDENT)
+2026-09-03 12:27:06 - INFO - User logged in: eliniel1 (STUDENT)
+2026-09-03 12:27:36 - INFO - User logged in: admin1 (ADMIN)
+2026-09-03 12:31:48 - INFO - User logged in: eliniel1 (STUDENT)
+2026-09-03 12:32:19 - INFO - User logged in: admin1 (ADMIN)
+2026-09-03 12:35:11 - INFO - User logged in: eliniel1 (STUDENT)
+2026-09-03 12:36:31 - INFO - Password reset and account unlocked for user: admin1
+2026-09-03 12:36:38 - INFO - User logged in: admin1 (ADMIN)
+2026-09-03 12:39:24 - INFO - User logged in: admin1 (ADMIN)
+2026-09-03 12:40:31 - INFO - User logged in: eliniel1 (STUDENT)
+2026-09-03 12:42:46 - INFO - User logged in: eliniel1 (STUDENT)
+2026-09-03 12:43:15 - INFO - User logged in: admin1 (ADMIN)
+2026-09-03 12:54:58 - INFO - User logged in: eliniel1 (STUDENT)
+2026-09-03 12:55:21 - INFO - User logged in: admin1 (ADMIN)

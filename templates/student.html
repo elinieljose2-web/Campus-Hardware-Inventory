@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NATIONAL UNIVERSITY-MANILA | Student Portal</title>
+    <style>
+        :root {
+            --bg-dark: #071B33;
+            --bg-page: #EEF3F8;
+            --card-bg: #FFFFFF;
+            --accent-blue: #0066B3;
+            --gold: #F4B41A;
+            --border-color: #C9D6E2;
+        }
+
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-page); margin: 0; }
+        .topbar { background-color: var(--bg-dark); color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--gold); }
+        .topbar h1 { margin: 0; font-size: 18px; }
+        .topbar a { color: var(--gold); text-decoration: none; font-weight: bold; }
+        .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
+        .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 28px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .card h2 { margin: 0 0 8px; color: var(--bg-dark); font-size: 22px; }
+        .section-intro { margin: 0 0 22px; color: #52677D; font-size: 14px; line-height: 1.5; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { background-color: var(--bg-dark); color: white; text-align: left; padding: 12px; font-size: 14px; }
+        td { padding: 12px; border-bottom: 1px solid var(--border-color); font-size: 14px; }
+        .badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; display: inline-block; }
+        .in-stock { background: #DFF5E5; color: #1E7E4D; }
+        .low-stock { background: #FFF3CD; color: #856404; }
+        .out-stock { background: #F8D7DA; color: #721C24; }
+        .form-row { display: flex; gap: 18px; margin-bottom: 18px; }
+        .form-row div { flex: 1; }
+        label { display: block; margin-bottom: 7px; color: #52677D; font-size: 11px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; }
+        input, select { width: 100%; padding: 10px 11px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; color: #102A43; background: #FFFFFF; }
+        input:focus, select:focus { outline: 2px solid rgba(0, 102, 179, 0.18); border-color: var(--accent-blue); }
+        .reservation-note { display: flex; gap: 9px; align-items: flex-start; margin: 0 0 22px; padding: 11px 13px; background: #F2F7FB; border-left: 3px solid var(--accent-blue); color: #52677D; font-size: 13px; line-height: 1.45; }
+        .reservation-note strong { color: var(--bg-dark); }
+        .form-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
+        button.btn-submit { background-color: var(--accent-blue); color: white; border: none; padding: 11px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: background-color 0.2s ease; }
+        button.btn-submit:hover { background-color: #004F8A; }
+        .student-tabs { display: flex; gap: 6px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); overflow-x: auto; }
+        .student-tab { border: 0; border-bottom: 3px solid transparent; background: transparent; color: #52677D; padding: 11px 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        .student-tab.active, .student-tab:hover { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
+        .student-panel { display: none; }
+        .student-panel.active { display: block; }
+        .status-pending { background: #FFF3CD; color: #856404; }
+        .status-approved { background: #DFF5E5; color: #1E7E4D; }
+        .status-declined { background: #F8D7DA; color: #721C24; }
+        .status-return_requested { background: #E9E3FF; color: #5B2C9A; }
+        .status-returned { background: #D4EDDA; color: #155724; }
+        .notification-item { background: var(--card-bg); border: 1px solid var(--border-color); border-left: 4px solid var(--accent-blue); border-radius: 6px; padding: 14px; margin-bottom: 10px; }
+        .notification-item.read { border-left-color: #9CA3AF; opacity: 0.78; }
+        .notification-status { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--accent-blue); }
+        .notification-item.read .notification-status { color: #52677D; }
+        .notification-message { margin: 7px 0 10px; }
+        .empty-state { color: #52677D; text-align: center; padding: 22px; }
+        @media (max-width: 720px) { .form-row { flex-direction: column; gap: 14px; } .card { padding: 20px; } .form-actions { justify-content: stretch; } button.btn-submit { width: 100%; } }
+    </style>
+</head>
+<body>
+
+    <div class="topbar">
+        <h1>NATIONAL UNIVERSITY-MANILA | Student Portal</h1>
+        <div>Welcome, {{ user.username }} | <a href="/logout">Logout</a></div>
+    </div>
+
+    <div class="container">
+        <nav class="student-tabs" aria-label="Student sections">
+            <button class="student-tab active" type="button" data-section="reserve-section">Reserve Hardware</button>
+            <button class="student-tab" type="button" data-section="history-section">My History</button>
+            <button class="student-tab" type="button" data-section="notifications-section">Notifications</button>
+        </nav>
+
+        <section id="reserve-section" class="student-panel active">
+        <div class="card">
+            <h2>Reserve Hardware</h2>
+            <p class="section-intro">Submit a request for one or more available laboratory items.</p>
+            <div class="reservation-note">
+                <strong>How it works</strong>
+                <span>Select your items and quantities in the inventory table below, then complete the dates and instructor details here.</span>
+            </div>
+            <div class="form-row">
+                <div>
+                    <label>Borrow Date</label>
+                    <input type="date" id="res-date">
+                </div>
+                <div>
+                    <label>Instructor</label>
+                    <input type="text" id="res-instructor" placeholder="Instructor Name">
+                </div>
+                <div>
+                    <label>Return Due Date</label>
+                    <input type="date" id="res-due">
+                </div>
+            </div>
+            <div class="form-actions"><button class="btn-submit" onclick="submitReservation()">Submit Request</button></div>
+        </div>
+
+        <div class="card">
+            <h2>Available Inventory</h2>
+            <table id="inventory-table">
+                <thead>
+                    <tr>
+                        <th>Select</th>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Stock Qty</th>
+                        <th>Unit Price</th>
+                        <th>Status</th>
+                        <th>Borrow Qty</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        </section>
+
+        <section id="history-section" class="student-panel">
+            <div class="card">
+                <h2>My Reservation History</h2>
+                <table id="history-table">
+                    <thead><tr><th>Request ID</th><th>Hardware</th><th>Quantity</th><th>Borrow Date</th><th>Return Due</th><th>Status</th><th>Handled By</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="notifications-section" class="student-panel">
+            <div class="card">
+                <h2>Notifications</h2>
+                <div id="notifications-list"></div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        function activateSection(sectionId) {
+            document.querySelectorAll('.student-tab').forEach(button => {
+                button.classList.toggle('active', button.dataset.section === sectionId);
+            });
+            document.querySelectorAll('.student-panel').forEach(panel => {
+                panel.classList.toggle('active', panel.id === sectionId);
+            });
+            if (sectionId === 'history-section') loadHistory();
+            if (sectionId === 'notifications-section') loadNotifications();
+        }
+
+        document.querySelectorAll('.student-tab').forEach(button => {
+            button.addEventListener('click', () => activateSection(button.dataset.section));
+        });
+
+        async function loadData() {
+            const res = await fetch('/api/hardware');
+            const data = await res.json();
+            
+            const tbody = document.querySelector('#inventory-table tbody');
+            tbody.innerHTML = '';
+
+            data.forEach(item => {
+                const badgeClass = item.status === 'IN STOCK' ? 'in-stock' : (item.status === 'LOW STOCK' ? 'low-stock' : 'out-stock');
+                tbody.innerHTML += `
+                    <tr>
+                        <td><input class="reserve-item" type="checkbox" value="${item.id}" ${item.stock_qty < 1 ? 'disabled' : ''} aria-label="Select ${item.name}"></td>
+                        <td><strong>${item.id}</strong></td>
+                        <td>${item.name}</td>
+                        <td>${item.category}</td>
+                        <td>${item.stock_qty}</td>
+                        <td>₱${item.unit_price.toFixed(2)}</td>
+                        <td><span class="badge ${badgeClass}">${item.status}</span></td>
+                        <td><input class="borrow-qty" data-hardware-id="${item.id}" type="number" min="1" max="${item.stock_qty}" value="1" ${item.stock_qty < 1 ? 'disabled' : ''} aria-label="Quantity for ${item.name}"></td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function loadHistory() {
+            const response = await fetch('/api/requests');
+            const data = await response.json();
+            const tbody = document.querySelector('#history-table tbody');
+            tbody.innerHTML = data.length ? data.map(item => {
+                const status = String(item.status || '').toLowerCase();
+                const statusClass = ['pending', 'approved', 'declined', 'return_requested', 'returned'].includes(status) ? `status-${status}` : 'status-pending';
+                return `<tr><td>${item.id}</td><td>${item.hardware_id}</td><td>${item.borrow_qty}</td><td>${item.borrow_date}</td><td>${item.return_due_date || '-'}</td><td><span class="badge ${statusClass}">${item.status}</span></td><td>${item.approved_by || '-'}</td></tr>`;
+            }).join('') : '<tr><td class="empty-state" colspan="7">No reservation history yet.</td></tr>';
+        }
+
+        async function loadNotifications() {
+            const response = await fetch('/api/notifications');
+            const data = await response.json();
+            const list = document.getElementById('notifications-list');
+            list.innerHTML = data.length ? data.map(item => `
+                <article class="notification-item ${item.read ? 'read' : ''}">
+                    <div class="notification-status">${item.read ? 'Read' : 'Unread'}</div>
+                    <div class="notification-message">${item.message}</div>
+                    ${item.read ? '' : `<button class="btn-submit" type="button" onclick="markNotificationRead(${item.id})">Mark as read</button>`}
+                </article>
+            `).join('') : '<div class="empty-state">No notifications.</div>';
+        }
+
+        async function markNotificationRead(notificationId) {
+            const response = await fetch('/api/notifications/read', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notification_id: notificationId })
+            });
+            const result = await response.json();
+            if (result.success) loadNotifications();
+        }
+
+        async function submitReservation() {
+            const selectedItems = [...document.querySelectorAll('.reserve-item:checked')];
+            if (!selectedItems.length) {
+                alert('Select at least one hardware item.');
+                return;
+            }
+            if (!document.getElementById('res-date').value) {
+                alert('Select a borrow date.');
+                return;
+            }
+
+            const common = {
+                borrow_date: document.getElementById('res-date').value,
+                instructor: document.getElementById('res-instructor').value,
+                return_due_date: document.getElementById('res-due').value,
+                purpose: "Student Reservation",
+                transaction_id: window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : `TX-${Date.now()}`
+            };
+            const results = await Promise.all(selectedItems.map(async item => {
+                const quantity = document.querySelector(`.borrow-qty[data-hardware-id="${item.value}"]`).value;
+                const response = await fetch('/api/reserve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...common, hardware_id: item.value, borrow_qty: quantity })
+                });
+                return response.json();
+            }));
+
+            const successful = results.filter(result => result.success).length;
+            if (successful === results.length) {
+                alert(`${successful} reservation request(s) submitted successfully!`);
+            } else {
+                alert(`${successful} of ${results.length} reservation request(s) were submitted.`);
+            }
+            loadData();
+            loadHistory();
+        }
+
+        loadData();
+        loadHistory();
+        loadNotifications();
+    </script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+{
+    "admin": {
+        "email": "admin@lab.edu",
+        "password_hash": "3eb3fe66b31e3b4d10fa70b5cad49c7112294af6ae4e476a1c405155d45aa121",
+        "role": "ADMIN",
+        "failed_attempts": 0,
+        "locked_until": null
+    },
+    "admin_lab": {
+        "email": "admin.lab@nu.edu.ph",
+        "password_hash": "a44ca5d29f6dab4320ab986479fa985b2d584b11a7da934f7e80bb1449913a07",
+        "role": "ADMIN",
+        "failed_attempts": 0,
+        "locked_until": null
+    },
+    "lab_head": {
+        "email": "head.coe@nu.edu.ph",
+        "password_hash": "a44ca5d29f6dab4320ab986479fa985b2d584b11a7da934f7e80bb1449913a07",
+        "role": "ADMIN",
+        "failed_attempts": 0,
+        "locked_until": null
+    },
+    "cpe_student1": {
+        "email": "student1@nu.edu.ph",
+        "password_hash": "67d93ffbc123ec5314bd8d4779e00fb74d7f8f3d7b6a2fbc8df7f670db45396b",
+        "role": "STUDENT",
+        "failed_attempts": 0,
+        "locked_until": null
+    },
+    "cpe_student2": {
+        "email": "student2@nu.edu.ph",
+        "password_hash": "67d93ffbc123ec5314bd8d4779e00fb74d7f8f3d7b6a2fbc8df7f670db45396b",
+        "role": "STUDENT",
+        "failed_attempts": 0,
+        "locked_until": null
+    },
+    "elinieljose": {
+        "email": "elinieljose6@gmail.com",
+        "password_hash": "acc8a71d1e942cad9044c338707580aeccd6bc0b7534b6da0d034dd1fe4dcb15",
+        "recovery_keyword_hash": "091998371d170fd124fd714b11855dfe1f7b0ca15d6f283c259dae63bade4a16",
+        "role": "STUDENT",
+        "failed_attempts": 0,
+        "locked_until": null
+    }
+}

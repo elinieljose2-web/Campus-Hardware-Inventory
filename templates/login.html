@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NATIONAL UNIVERSITY-MANILA | Laboratory Portal</title>
+    <style>
+        :root {
+            --bg-dark: #071B33;
+            --bg-page: #EEF3F8;
+            --card-bg: #FFFFFF;
+            --text-light: #102A43;
+            --text-muted: #52677D;
+            --accent-blue: #0066B3;
+            --accent-blue-hover: #004f8a;
+            --gold: #F4B41A;
+            --border-color: #C9D6E2;
+            --danger-red: #C83C4A;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-page);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .outer-shell {
+            width: 100%;
+            max-width: 1200px;
+            min-height: 720px;
+            background: var(--bg-page);
+            border: 1px solid rgba(0,0,0,0.2);
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.25);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            background: var(--bg-dark);
+            color: #FFFFFF;
+            padding: 14px 18px;
+            border-bottom: 4px solid var(--gold);
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .portal-shell {
+            flex: 1;
+            background: var(--bg-page);
+            display: flex;
+            padding: 24px;
+            gap: 0;
+        }
+
+        .left-panel {
+            width: 320px;
+            background: var(--bg-dark);
+            color: #FFFFFF;
+            padding: 28px 24px 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        .logo-mark {
+            font-family: Georgia, 'Times New Roman', serif;
+            color: var(--gold);
+            font-size: 52px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .brand-name {
+            margin-top: 24px;
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1.1;
+            color: #FFFFFF;
+        }
+
+        .brand-divider {
+            width: 65px;
+            height: 4px;
+            background: var(--gold);
+            margin: 18px 0 18px;
+        }
+
+        .brand-copy {
+            font-size: 16px;
+            line-height: 1.35;
+            color: #D6E4F0;
+            margin-bottom: 18px;
+        }
+
+        .brand-copy i {
+            font-style: normal;
+            font-weight: 700;
+        }
+
+        .campus-photo {
+            width: 100%;
+            height: 250px;
+            margin-top: auto;
+            object-fit: cover;
+            display: block;
+            background: #D0DCE7;
+        }
+
+        .right-panel {
+            flex: 1;
+            background: #F2F4F7;
+            padding: 40px 36px 18px;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid rgba(16, 42, 67, 0.15);
+        }
+
+        .login-header {
+            text-align: center;
+            color: var(--text-light);
+            font-size: 32px;
+            line-height: 1.15;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            margin-bottom: 10px;
+        }
+
+        .login-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 16px;
+            margin-bottom: 28px;
+            font-style: italic;
+        }
+
+        .flash-messages {
+            margin-bottom: 16px;
+        }
+
+        .alert {
+            padding: 10px 14px;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 8px;
+            border: 1px solid transparent;
+        }
+
+        .alert-danger {
+            background: #F8D7DA;
+            color: #721C24;
+            border-color: #F5C6CB;
+        }
+
+        .alert-success {
+            background: #D4EDDA;
+            color: #155724;
+            border-color: #C3E6CB;
+        }
+
+        .form-shell {
+            width: min(760px, 100%);
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-light);
+            margin-bottom: 8px;
+        }
+
+        .form-group input {
+            width: 100%;
+            height: 44px;
+            border: 1px solid #B3C1CE;
+            border-radius: 4px;
+            background: #F7FAFC;
+            padding: 10px 12px;
+            font-size: 16px;
+            color: var(--text-light);
+        }
+
+        .password-wrap {
+            position: relative;
+        }
+
+        .password-wrap input {
+            padding-right: 44px;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 1px solid #B8C2CC;
+            background: #ECEFF3;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 22px;
+            text-align: center;
+            color: #4A5568;
+        }
+
+        .login-button {
+            width: 100%;
+            height: 56px;
+            border: none;
+            background: var(--accent-blue);
+            color: #FFFFFF;
+            font-size: 22px;
+            font-weight: 700;
+            border-radius: 0;
+            cursor: pointer;
+            margin-top: 6px;
+        }
+
+        .login-button:hover {
+            background: var(--accent-blue-hover);
+        }
+
+        .action-links {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 18px;
+            font-size: 16px;
+        }
+
+        .action-links a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .action-links a:last-child {
+            color: var(--danger-red);
+        }
+
+        @media (max-width: 900px) {
+            .portal-shell {
+                flex-direction: column;
+            }
+
+            .left-panel,
+            .right-panel {
+                width: 100%;
+            }
+
+            .left-panel {
+                min-height: 260px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="outer-shell">
+        <div class="topbar">NATIONAL UNIVERSITY-MANILA | Laboratory Portal</div>
+
+        <div class="portal-shell">
+            <div class="left-panel">
+                <div class="logo-mark">NU</div>
+                <div class="brand-name">NATIONAL<br>UNIVERSITY-<br>MANILA</div>
+                <div class="brand-divider"></div>
+                <div class="brand-copy">
+                    Laboratory Asset<br>
+                    Management Portal<br><br>
+                    <i>Learn. Lead. Serve.</i>
+                </div>
+                <img class="campus-photo" src="{{ url_for('static', filename='discover-nu-manila-campus-1e9c479e51c63af192b112f47672946d64f1548fa8b2eb1eb043f6c49d7dab89.webp') }}" alt="NU Manila campus">
+            </div>
+
+            <div class="right-panel">
+                <div class="login-header">COMPUTER ENGINEERING<br>LABORATORY EQUIPMENT PORTAL</div>
+                <div class="login-subtitle">Sign in to manage laboratory equipment</div>
+
+                <div class="flash-messages">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                </div>
+
+                <form class="form-shell" method="POST" action="{{ url_for('login') }}">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input id="username" type="text" name="username" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="password-wrap">
+                            <input id="password" type="password" name="password" required>
+                            <button type="button" class="toggle-password" onclick="togglePassword()">◉</button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="login-button">Login</button>
+
+                    <div class="action-links">
+                        <a href="{{ url_for('register') }}">Register Account</a>
+                        <a href="{{ url_for('reset_password') }}">Reset Password</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const button = document.querySelector('.toggle-password');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                button.textContent = '◌';
+            } else {
+                passwordInput.type = 'password';
+                button.textContent = '◉';
+            }
+        }
+    </script>
+</body>
+</html>
