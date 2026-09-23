@@ -1,0 +1,41 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# Local environment/config
+.env
+.env.*
+*.local
+
+# Database files
+*.db
+*.sqlite3
+hardware_inventory.db
+
+# Generated reports / uploads
+inventory_report.csv
+app_logging/
+*.log
+
+# Python packaging / build artifacts
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OS files
+.DS_Store
+Thumbs.db
