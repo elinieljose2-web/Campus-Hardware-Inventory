@@ -6,7 +6,12 @@ from urllib.request import Request, urlopen
 from dotenv import load_dotenv
 
 
+load_dotenv()
+
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
+BREVO_SENDER_EMAIL = os.getenv("BREVO_SENDER_EMAIL", "").strip()
+BREVO_SENDER_NAME = os.getenv("BREVO_SENDER_NAME", "").strip()
 
 
 class EmailConfigurationError(RuntimeError):
@@ -17,18 +22,31 @@ class EmailDeliveryError(RuntimeError):
     pass
 
 
-def send_brevo_email(recipient_email, subject, text_content, html_content):
+def refresh_brevo_config():
+    """Load the current Brevo settings from the environment."""
+    global BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME
+
     load_dotenv()
 
-    api_key = os.getenv("BREVO_API_KEY", "").strip()
-    sender_email = os.getenv("BREVO_SENDER_EMAIL", "").strip()
-    sender_name = os.getenv("BREVO_SENDER_NAME", "").strip()
+    BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
+    BREVO_SENDER_EMAIL = os.getenv("BREVO_SENDER_EMAIL", "").strip()
+    BREVO_SENDER_NAME = os.getenv("BREVO_SENDER_NAME", "").strip()
+
+
+def email_service_configured():
+    refresh_brevo_config()
+    return all((BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME))
+
+
+def send_brevo_email(recipient_email, subject, text_content, html_content):
+    refresh_brevo_config()
+
     missing_settings = [
         name
         for name, value in (
-            ("BREVO_API_KEY", api_key),
-            ("BREVO_SENDER_EMAIL", sender_email),
-            ("BREVO_SENDER_NAME", sender_name),
+            ("BREVO_API_KEY", BREVO_API_KEY),
+            ("BREVO_SENDER_EMAIL", BREVO_SENDER_EMAIL),
+            ("BREVO_SENDER_NAME", BREVO_SENDER_NAME),
         )
         if not value
     ]
@@ -38,7 +56,7 @@ def send_brevo_email(recipient_email, subject, text_content, html_content):
         )
 
     payload = {
-        "sender": {"email": sender_email, "name": sender_name},
+        "sender": {"email": BREVO_SENDER_EMAIL, "name": BREVO_SENDER_NAME},
         "to": [{"email": recipient_email}],
         "subject": subject,
         "textContent": text_content,
@@ -48,7 +66,7 @@ def send_brevo_email(recipient_email, subject, text_content, html_content):
         BREVO_API_URL,
         data=json.dumps(payload).encode("utf-8"),
         headers={
-            "api-key": api_key,
+            "api-key": BREVO_API_KEY,
             "content-type": "application/json",
         },
         method="POST",

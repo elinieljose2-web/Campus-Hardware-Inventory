@@ -11,8 +11,6 @@ import secrets
 
 from datetime import datetime, timedelta, timezone
 from math import ceil
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 
 from dotenv import load_dotenv
 from flask import (
@@ -28,6 +26,7 @@ from flask import (
 )
 from werkzeug.security import generate_password_hash
 
+import email_service
 from controllers.auth_controller import AuthController
 from controllers.hardware_controller import HardwareController
 
@@ -53,28 +52,6 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Brevo Email Configuration
-# ---------------------------------------------------------------------------
-
-BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
-
-BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
-BREVO_SENDER_EMAIL = os.getenv("BREVO_SENDER_EMAIL", "").strip()
-BREVO_SENDER_NAME = os.getenv("BREVO_SENDER_NAME", "").strip()
-
-
-# Safe diagnostic information.
-# IMPORTANT: Never print the actual API key.
-logger.info(
-    "Brevo configuration: key_loaded=%s, key_length=%d, sender_email=%s, sender_name=%s",
-    bool(BREVO_API_KEY),
-    len(BREVO_API_KEY),
-    BREVO_SENDER_EMAIL or "<missing>",
-    BREVO_SENDER_NAME or "<missing>",
-)
-
-
-# ---------------------------------------------------------------------------
 # OTP Configuration
 # ---------------------------------------------------------------------------
 
@@ -85,13 +62,7 @@ OTP_MAX_ATTEMPTS = 5
 
 def email_service_configured():
     """Return True when all required Brevo configuration is available."""
-    return all(
-        (
-            BREVO_API_KEY,
-            BREVO_SENDER_EMAIL,
-            BREVO_SENDER_NAME,
-        )
-    )
+    return email_service.email_service_configured()
 
 
 def email_verification_configured():
@@ -111,6 +82,8 @@ def email_verification_configured():
 
 def send_otp_email(recipient_email, otp, intent="Email verification"):
     """Send a verification or password-reset OTP through Brevo."""
+    email_service.refresh_brevo_config()
+    sender_name = email_service.BREVO_SENDER_NAME or "Laboratory System"
 
     expiry_notice = (
         "It expires in 10 minutes."
@@ -120,16 +93,16 @@ def send_otp_email(recipient_email, otp, intent="Email verification"):
 
     return send_brevo_email(
         recipient_email,
-        f"{intent} code - {BREVO_SENDER_NAME or 'Laboratory System'}",
+        f"{intent} code - {sender_name}",
         (
             f"Your {intent.lower()} code for "
-            f"{BREVO_SENDER_NAME or 'Laboratory System'} is {otp}. "
+            f"{sender_name} is {otp}. "
             f"{expiry_notice} "
             "Do not share this code with anyone."
         ),
         (
             f"<p>Your {intent.lower()} code for "
-            f"{BREVO_SENDER_NAME or 'Laboratory System'} is:</p>"
+            f"{sender_name} is:</p>"
             f"<p style=\"font-size:28px;font-weight:bold;"
             f"letter-spacing:6px\">{otp}</p>"
             f"<p>{expiry_notice} Do not share this code with anyone.</p>"
@@ -140,91 +113,21 @@ def send_otp_email(recipient_email, otp, intent="Email verification"):
 def send_brevo_email(recipient_email, subject, text_content, html_content):
     """Send a transactional email through Brevo's API."""
 
-    if not email_service_configured():
-        logger.error(
-            "Brevo email is not configured. "
-            "Check BREVO_API_KEY, BREVO_SENDER_EMAIL, and BREVO_SENDER_NAME."
+    try:
+        email_service.send_brevo_email(
+            recipient_email,
+            subject,
+            text_content,
+            html_content,
         )
+    except email_service.EmailConfigurationError as error:
+        logger.error("Brevo email is not configured: %s", error)
+        return False
+    except email_service.EmailDeliveryError as error:
+        logger.error("Brevo email delivery failed: %s", error)
         return False
 
-    payload = {
-        "sender": {
-            "email": BREVO_SENDER_EMAIL,
-            "name": BREVO_SENDER_NAME,
-        },
-        "to": [
-            {
-                "email": recipient_email,
-            }
-        ],
-        "subject": subject,
-        "textContent": text_content,
-        "htmlContent": html_content,
-    }
-
-    api_request = Request(
-        BREVO_API_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "accept": "application/json",
-            "api-key": BREVO_API_KEY,
-            "content-type": "application/json",
-        },
-        method="POST",
-    )
-
-    try:
-        with urlopen(api_request, timeout=30) as response:
-            response_body = response.read().decode(
-                "utf-8",
-                errors="replace",
-            )
-
-            if 200 <= response.status < 300:
-                logger.info(
-                    "Brevo email sent successfully. HTTP %s.",
-                    response.status,
-                )
-                return True
-
-            logger.warning(
-                "Brevo email API returned HTTP %s: %s",
-                response.status,
-                response_body,
-            )
-
-    except HTTPError as error:
-        # Brevo's response body is extremely important when diagnosing
-        # authentication, sender, payload, or account errors.
-        response_body = error.read().decode(
-            "utf-8",
-            errors="replace",
-        )
-
-        logger.error(
-            "Brevo email API returned HTTP %s: %s",
-            error.code,
-            response_body,
-        )
-
-    except URLError as error:
-        logger.error(
-            "Could not connect to Brevo email API: %s",
-            error.reason,
-        )
-
-    except TimeoutError:
-        logger.error(
-            "Brevo email API request timed out."
-        )
-
-    except OSError as error:
-        logger.error(
-            "Brevo email API request failed: %s",
-            error,
-        )
-
-    return False
+    return True
 
 
 # ---------------------------------------------------------------------------
