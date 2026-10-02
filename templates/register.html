@@ -28,7 +28,7 @@
         <header class="header"><strong>NATIONAL UNIVERSITY-MANILA</strong><span>Laboratory Asset Management Portal</span></header>
         <div class="content">
             <h1>Register Account</h1>
-            <p class="intro">Create a student account to reserve laboratory equipment.</p>
+            <p class="intro">Create an account to reserve laboratory equipment.</p>
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% for category, message in messages %}<div class="alert">{{ message }}</div>{% endfor %}
             {% endwith %}
@@ -41,7 +41,7 @@
                 <select id="role" name="role" required>
                     <option value="">Select account type</option>
                     <option value="STUDENT">Student</option>
-                    <option value="ADMIN">Administrator</option>
+                    <option value="ADMIN">Admin</option>
                 </select>
                 <label for="password">Password</label>
                 <input id="password" name="password" type="password" required autocomplete="new-password">
@@ -50,7 +50,7 @@
                 <label for="recovery_keyword">Recovery Keyword</label>
                 <input id="recovery_keyword" name="recovery_keyword" type="text" required minlength="3" autocomplete="off">
                 <small style="display:block; margin-top:6px; color:var(--muted);">Keep this keyword private. It is required to reset your password.</small>
-                <button type="submit">Create Account</button>
+                <button type="submit">Send Verification Code</button>
             </form>
             <a class="back" href="{{ url_for('login') }}">Back to Login</a>
         </div>

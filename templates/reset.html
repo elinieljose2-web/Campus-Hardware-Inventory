@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reset Password | Laboratory System</title>
+  <style>
+    :root {
+      --page: #EEF3F8;
+      --surface: #FFFFFF;
+      --text: #102A43;
+      --muted: #52677D;
+      --border: #C9D6E2;
+      --accent: #d67a00;
+      --accent-dark: #ad6200;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px 16px;
+      background: var(--page);
+      color: var(--text);
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+    }
+
+    .auth-page { width: min(460px, 100%); }
+
+    .auth-card {
+      padding: 30px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 8px 24px rgba(7, 27, 51, 0.10);
+    }
+
+    .card-heading { margin-bottom: 22px; }
+    .eyebrow { margin: 0 0 8px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    .muted { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .alert {
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      border-radius: 4px;
+      background: #F8D7DA;
+      color: #721C24;
+      font-size: 13px;
+    }
+
+    .alert-success, .alert-info { background: #D4EDDA; color: #155724; }
+
+    label {
+      display: block;
+      margin: 15px 0 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface);
+    }
+
+    .input-wrap:focus-within {
+      outline: 2px solid rgba(214, 122, 0, 0.18);
+      border-color: var(--accent);
+    }
+
+    .input-wrap span { flex: 0 0 auto; }
+
+    input {
+      width: 100%;
+      min-width: 0;
+      padding: 11px 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      font-size: 15px;
+    }
+
+    .primary {
+      width: 100%;
+      margin-top: 22px;
+      padding: 12px;
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      background: var(--accent);
+      color: #FFFFFF;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .primary:hover { border-color: var(--accent-dark); background: var(--accent-dark); }
+
+    .back-link {
+      display: block;
+      margin-top: 20px;
+      color: #007bff;
+      text-align: center;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .back-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <main class="auth-page">
+    <section class="auth-card">
+      <header class="card-heading">
+        <p class="eyebrow" style="color: #d67a00;">ACCOUNT RECOVERY</p>
+        <h1>Reset Password</h1>
+        <p class="muted">Submit your request to create a new password.</p>
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="post" action="{{ url_for('reset_request') }}" class="auth-form">
+        <label for="username">Username</label>
+        <div class="input-wrap">
+          <span aria-hidden="true">👤</span>
+          <input id="username" name="username" type="text" placeholder="Enter username" required autocomplete="username">
+        </div>
+
+        <label for="email">Email Address</label>
+        <div class="input-wrap">
+          <span aria-hidden="true">✉️</span>
+          <input id="email" name="email" type="email" placeholder="name@example.com" required autocomplete="email">
+        </div>
+
+        <label for="recovery_keyword">Recovery Keyword</label>
+        <div class="input-wrap">
+          <span aria-hidden="true">🔑</span>
+          <input id="recovery_keyword" name="recovery_keyword" type="password" placeholder="Enter your recovery keyword" required autocomplete="off">
+        </div>
+
+        <label for="new_password">New Password</label>
+        <div class="input-wrap">
+          <span aria-hidden="true">🔒</span>
+          <input id="new_password" name="new_password" type="password" placeholder="••••••••" required autocomplete="new-password">
+        </div>
+
+        <label for="confirm_password">Confirm New Password</label>
+        <div class="input-wrap">
+          <span aria-hidden="true">🔒</span>
+          <input id="confirm_password" name="confirm_password" type="password" placeholder="••••••••" required autocomplete="new-password">
+        </div>
+
+        <button class="primary wide" type="submit">Send Verification Code <span aria-hidden="true">→</span></button>
+      </form>
+
+      <a class="back-link" href="{{ url_for('login') }}">← Back to Login</a>
+    </section>
+  </main>
+</body>
+</html>

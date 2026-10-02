@@ -2,3 +2,5 @@ Flask
 Pillow
 gunicorn
 psycopg[binary]
+pydantic
+python-dotenv

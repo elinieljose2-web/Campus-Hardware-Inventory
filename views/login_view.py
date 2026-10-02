@@ -166,7 +166,7 @@ class LoginWindow(ttk.Frame):
         self.reg_keyword.pack(anchor="w", pady=(0, 8))
 
         ttk.Label(card, text="Role", style="CardLabel.TLabel").pack(anchor="w", pady=(2, 2))
-        self.reg_role = ttk.Combobox(card, values=["STUDENT", "ADMIN"], state="readonly", font=("Segoe UI", 10), width=60)
+        self.reg_role = ttk.Combobox(card, values=["STUDENT"], state="readonly", font=("Segoe UI", 10), width=60)
         self.reg_role.current(0)
         self.reg_role.pack(fill="x", pady=(0, 15))
 
