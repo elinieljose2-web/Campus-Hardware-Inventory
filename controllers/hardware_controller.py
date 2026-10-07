@@ -1,167 +1,353 @@
 import csv
-from datetime import date, datetime
+import json
 import os
-import sqlite3
+from datetime import date, datetime
+
+import psycopg
+from dotenv import load_dotenv
+from psycopg.rows import dict_row
+
+load_dotenv()
 
 
 class HardwareController:
     LOW_STOCK_LIMIT = 5
 
     def __init__(self, db_path="hardware_inventory.db"):
+        # Kept for compatibility with the existing application.
+        # Runtime database is now Supabase PostgreSQL.
         self.db_path = db_path
+
         self._observers = []
         self._notifications = []
         self._notification_id_counter = 1
+
         self._init_db()
 
     def _get_connection(self):
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+        """Return a connection to Supabase PostgreSQL."""
+        database_url = os.getenv("DATABASE_URL")
+
+        if not database_url:
+            raise RuntimeError("DATABASE_URL is not configured.")
+
+        return psycopg.connect(database_url, row_factory=dict_row)
 
     def _init_db(self):
+        """
+        Supabase tables were already created and migrated.
+
+        We intentionally do not run SQLite CREATE TABLE or ALTER TABLE
+        statements here anymore.
+        """
         conn = self._get_connection()
-        cursor = conn.cursor()
-
-        # Hardware Inventory Table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS hardware (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                category TEXT NOT NULL,
-                stock_qty INTEGER NOT NULL,
-                unit_price REAL DEFAULT 0.0,
-                status TEXT DEFAULT 'In Stock',
-                condition_status TEXT DEFAULT 'GOOD'
-            );
-        """)
-
-        # Borrow Records Table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS borrow_records (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL,
-                hardware_id TEXT NOT NULL,
-                borrow_qty INTEGER NOT NULL,
-                borrow_date TEXT NOT NULL,
-                return_due_date TEXT,
-                status TEXT DEFAULT 'PENDING',
-                approved_by TEXT DEFAULT '-',
-                checked_out_at TEXT,
-                returned_at TEXT,
-                return_condition TEXT,
-                return_notes TEXT,
-                purpose TEXT,
-                instructor TEXT,
-                transaction_id TEXT
-            );
-        """)
-
-        # System Audit Log Table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS audit_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                action TEXT NOT NULL,
-                details TEXT NOT NULL,
-                performed_by TEXT DEFAULT 'System',
-                timestamp TEXT NOT NULL
-            );
-        """)
-
-        # Condition History Table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS condition_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                hardware_id TEXT NOT NULL,
-                old_condition TEXT NOT NULL,
-                new_condition TEXT NOT NULL,
-                reason TEXT NOT NULL,
-                changed_by TEXT NOT NULL,
-                changed_at TEXT NOT NULL
-            );
-        """)
-
-        # Database Schema Migrations for existing DB files
-        try:
-            cursor.execute(
-                "ALTER TABLE borrow_records ADD COLUMN approved_by TEXT DEFAULT"
-                " '-'"
-            )
-        except sqlite3.OperationalError:
-            pass
 
         try:
-            cursor.execute(
-                "ALTER TABLE borrow_records ADD COLUMN transaction_id TEXT"
-            )
-        except sqlite3.OperationalError:
-            pass
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            conn.commit()
+        finally:
+            conn.close()
 
-        try:
-            cursor.execute(
-                "ALTER TABLE audit_logs ADD COLUMN performed_by TEXT DEFAULT"
-                " 'System'"
-            )
-        except sqlite3.OperationalError:
-            pass
-
-        for column, definition in (
-            ("condition_status", "TEXT DEFAULT 'GOOD'"),
-            ("unit_price", "REAL DEFAULT 0.0"),
-            ("checked_out_at", "TEXT"),
-            ("returned_at", "TEXT"),
-            ("return_condition", "TEXT"),
-            ("return_notes", "TEXT"),
-            ("purpose", "TEXT"),
-            ("instructor", "TEXT"),
-        ):
-            try:
-                table = (
-                    "hardware"
-                    if column in ("condition_status", "unit_price")
-                    else "borrow_records"
-                )
-                cursor.execute(
-                    f"ALTER TABLE {table} ADD COLUMN {column} {definition}"
-                )
-            except sqlite3.OperationalError:
-                pass
-
-        conn.commit()
-        conn.close()
+    # ------------------------------------------------------------------
+    # BACKUP / RESTORE
+    # ------------------------------------------------------------------
 
     def backup_database(self, output_path):
-        output_path = os.path.abspath(output_path)
-        if output_path == os.path.abspath(self.db_path):
-            return False
-        source = self._get_connection()
-        destination = sqlite3.connect(output_path)
+        """
+        Create a logical JSON backup of the PostgreSQL tables used
+        by this controller.
+
+        The old SQLite .backup() method cannot be used with PostgreSQL.
+        """
+        tables = [
+            "hardware",
+            "borrow_records",
+            "condition_history",
+            "audit_logs",
+        ]
+
         try:
-            source.backup(destination)
-            self._init_db()
+            backup_data = {
+                "created_at": datetime.now().isoformat(),
+                "database": "Supabase PostgreSQL",
+                "tables": {},
+            }
+
+            conn = self._get_connection()
+
+            try:
+                for table in tables:
+                    rows = conn.execute(
+                        f"SELECT * FROM {table} ORDER BY id"
+                    ).fetchall()
+
+                    # Convert values into JSON-safe values.
+                    clean_rows = []
+
+                    for row in rows:
+                        clean_row = {}
+
+                        for key, value in row.items():
+                            if isinstance(value, (datetime, date)):
+                                clean_row[key] = value.isoformat()
+                            else:
+                                clean_row[key] = value
+
+                        clean_rows.append(clean_row)
+
+                    backup_data["tables"][table] = clean_rows
+
+            finally:
+                conn.close()
+
+            output_path = os.path.abspath(output_path)
+
+            with open(
+                output_path,
+                "w",
+                encoding="utf-8",
+            ) as backup_file:
+                json.dump(
+                    backup_data,
+                    backup_file,
+                    indent=2,
+                    default=str,
+                )
+
             return True
-        except sqlite3.Error:
+
+        except Exception as error:
+            print("Database Backup Error:", error)
             return False
-        finally:
-            destination.close()
-            source.close()
 
     def restore_database(self, input_path):
+        """
+        Restore a logical JSON backup created by backup_database().
+
+        This is intentionally separate from the old SQLite restore logic.
+        """
         input_path = os.path.abspath(input_path)
-        if not os.path.isfile(input_path) or input_path == os.path.abspath(
-            self.db_path
-        ):
+
+        if not os.path.isfile(input_path):
             return False
-        source = sqlite3.connect(input_path)
-        destination = self._get_connection()
+
         try:
-            source.backup(destination)
+            with open(
+                input_path,
+                "r",
+                encoding="utf-8",
+            ) as backup_file:
+                backup_data = json.load(backup_file)
+
+            tables = backup_data.get("tables", {})
+
+            conn = self._get_connection()
+
+            try:
+                # Restore child/dependent data first.
+                # Existing application data is replaced.
+                for table in (
+                    "condition_history",
+                    "audit_logs",
+                    "borrow_records",
+                    "hardware",
+                ):
+                    rows = tables.get(table, [])
+
+                    if not rows:
+                        continue
+
+                    # Only restore known application columns.
+                    if table == "hardware":
+                        for row in rows:
+                            conn.execute(
+                                """
+                                INSERT INTO hardware
+                                (
+                                    id,
+                                    name,
+                                    category,
+                                    stock_qty,
+                                    unit_price,
+                                    status,
+                                    condition_status
+                                )
+                                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                                ON CONFLICT (id)
+                                DO UPDATE SET
+                                    name = EXCLUDED.name,
+                                    category = EXCLUDED.category,
+                                    stock_qty = EXCLUDED.stock_qty,
+                                    unit_price = EXCLUDED.unit_price,
+                                    status = EXCLUDED.status,
+                                    condition_status =
+                                        EXCLUDED.condition_status
+                                """,
+                                (
+                                    row.get("id"),
+                                    row.get("name"),
+                                    row.get("category"),
+                                    row.get("stock_qty", 0),
+                                    row.get("unit_price", 0),
+                                    row.get("status", "In Stock"),
+                                    row.get("condition_status", "GOOD"),
+                                ),
+                            )
+
+                    elif table == "borrow_records":
+                        for row in rows:
+                            conn.execute(
+                                """
+                                INSERT INTO borrow_records
+                                (
+                                    id,
+                                    username,
+                                    hardware_id,
+                                    borrow_qty,
+                                    borrow_date,
+                                    return_due_date,
+                                    status,
+                                    approved_by,
+                                    checked_out_at,
+                                    returned_at,
+                                    return_condition,
+                                    return_notes,
+                                    purpose,
+                                    instructor,
+                                    transaction_id
+                                )
+                                VALUES
+                                (
+                                    %s, %s, %s, %s, %s, %s, %s,
+                                    %s, %s, %s, %s, %s, %s, %s, %s
+                                )
+                                ON CONFLICT (id)
+                                DO UPDATE SET
+                                    username = EXCLUDED.username,
+                                    hardware_id = EXCLUDED.hardware_id,
+                                    borrow_qty = EXCLUDED.borrow_qty,
+                                    borrow_date = EXCLUDED.borrow_date,
+                                    return_due_date =
+                                        EXCLUDED.return_due_date,
+                                    status = EXCLUDED.status,
+                                    approved_by = EXCLUDED.approved_by,
+                                    checked_out_at =
+                                        EXCLUDED.checked_out_at,
+                                    returned_at = EXCLUDED.returned_at,
+                                    return_condition =
+                                        EXCLUDED.return_condition,
+                                    return_notes = EXCLUDED.return_notes,
+                                    purpose = EXCLUDED.purpose,
+                                    instructor = EXCLUDED.instructor,
+                                    transaction_id =
+                                        EXCLUDED.transaction_id
+                                """,
+                                (
+                                    row.get("id"),
+                                    row.get("username"),
+                                    row.get("hardware_id"),
+                                    row.get("borrow_qty"),
+                                    row.get("borrow_date"),
+                                    row.get("return_due_date"),
+                                    row.get("status", "PENDING"),
+                                    row.get("approved_by", "-"),
+                                    row.get("checked_out_at"),
+                                    row.get("returned_at"),
+                                    row.get("return_condition"),
+                                    row.get("return_notes"),
+                                    row.get("purpose"),
+                                    row.get("instructor"),
+                                    row.get("transaction_id"),
+                                ),
+                            )
+
+                    elif table == "condition_history":
+                        for row in rows:
+                            conn.execute(
+                                """
+                                INSERT INTO condition_history
+                                (
+                                    id,
+                                    hardware_id,
+                                    old_condition,
+                                    new_condition,
+                                    reason,
+                                    changed_by,
+                                    changed_at
+                                )
+                                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                                ON CONFLICT (id)
+                                DO UPDATE SET
+                                    hardware_id =
+                                        EXCLUDED.hardware_id,
+                                    old_condition =
+                                        EXCLUDED.old_condition,
+                                    new_condition =
+                                        EXCLUDED.new_condition,
+                                    reason = EXCLUDED.reason,
+                                    changed_by = EXCLUDED.changed_by,
+                                    changed_at = EXCLUDED.changed_at
+                                """,
+                                (
+                                    row.get("id"),
+                                    row.get("hardware_id"),
+                                    row.get("old_condition"),
+                                    row.get("new_condition"),
+                                    row.get("reason"),
+                                    row.get("changed_by"),
+                                    row.get("changed_at"),
+                                ),
+                            )
+
+                    elif table == "audit_logs":
+                        for row in rows:
+                            conn.execute(
+                                """
+                                INSERT INTO audit_logs
+                                (
+                                    id,
+                                    action,
+                                    details,
+                                    performed_by,
+                                    timestamp
+                                )
+                                VALUES (%s, %s, %s, %s, %s)
+                                ON CONFLICT (id)
+                                DO UPDATE SET
+                                    action = EXCLUDED.action,
+                                    details = EXCLUDED.details,
+                                    performed_by =
+                                        EXCLUDED.performed_by,
+                                    timestamp = EXCLUDED.timestamp
+                                """,
+                                (
+                                    row.get("id"),
+                                    row.get("action"),
+                                    row.get("details"),
+                                    row.get("performed_by", "System"),
+                                    row.get("timestamp"),
+                                ),
+                            )
+
+                conn.commit()
+
+            except Exception:
+                conn.rollback()
+                raise
+
+            finally:
+                conn.close()
+
             return True
-        except sqlite3.Error:
+
+        except Exception as error:
+            print("Database Restore Error:", error)
             return False
-        finally:
-            destination.close()
-            source.close()
+
+    # ------------------------------------------------------------------
+    # CONDITION HISTORY
+    # ------------------------------------------------------------------
 
     def _record_condition_change(
         self,
@@ -174,12 +360,22 @@ class HardwareController:
     ):
         old_condition = (old_condition or "GOOD").upper()
         new_condition = (new_condition or "GOOD").upper()
+
         if old_condition == new_condition:
             return
+
         conn.execute(
             """
-            INSERT INTO condition_history (hardware_id, old_condition, new_condition, reason, changed_by, changed_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO condition_history
+            (
+                hardware_id,
+                old_condition,
+                new_condition,
+                reason,
+                changed_by,
+                changed_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
             """,
             (
                 hardware_id,
@@ -193,17 +389,32 @@ class HardwareController:
 
     def get_condition_history(self, hardware_id):
         conn = self._get_connection()
-        rows = conn.execute(
-            """
-            SELECT hardware_id, old_condition, new_condition, reason, changed_by, changed_at
-            FROM condition_history
-            WHERE hardware_id = ?
-            ORDER BY id DESC
-            """,
-            (hardware_id,),
-        ).fetchall()
-        conn.close()
-        return [dict(row) for row in rows]
+
+        try:
+            rows = conn.execute(
+                """
+                SELECT
+                    hardware_id,
+                    old_condition,
+                    new_condition,
+                    reason,
+                    changed_by,
+                    changed_at
+                FROM condition_history
+                WHERE hardware_id = %s
+                ORDER BY id DESC
+                """,
+                (hardware_id,),
+            ).fetchall()
+
+            return [dict(row) for row in rows]
+
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------
+    # OBSERVERS
+    # ------------------------------------------------------------------
 
     def subscribe(self, callback):
         if callback not in self._observers:
@@ -216,73 +427,134 @@ class HardwareController:
             except Exception:
                 pass
 
+    # ------------------------------------------------------------------
+    # AUDIT LOGS
+    # ------------------------------------------------------------------
+
     def log_audit(self, action, details, performed_by="System"):
-        """Inserts an audit event into the database."""
+        """Insert an audit event into Supabase."""
         try:
             conn = self._get_connection()
-            cursor = conn.cursor()
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            cursor.execute(
-                """
-                INSERT INTO audit_logs (action, details, performed_by, timestamp)
-                VALUES (?, ?, ?, ?)
-                """,
-                (action, details, performed_by, timestamp),
-            )
-            conn.commit()
-            conn.close()
-        except Exception as e:
-            print("Audit Logging Error:", e)
+
+            try:
+                timestamp = datetime.now().strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+
+                conn.execute(
+                    """
+                    INSERT INTO audit_logs
+                    (
+                        action,
+                        details,
+                        performed_by,
+                        timestamp
+                    )
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (
+                        action,
+                        details,
+                        performed_by,
+                        timestamp,
+                    ),
+                )
+
+                conn.commit()
+
+            finally:
+                conn.close()
+
+        except Exception as error:
+            print("Audit Logging Error:", error)
 
     def get_audit_logs(self):
-        """Retrieves all log entries sorted by latest first."""
+        """Retrieve all audit logs sorted newest first."""
         try:
             conn = self._get_connection()
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT id, action, details, performed_by, timestamp
-                FROM audit_logs
-                ORDER BY id DESC
-                """
-            )
-            rows = cursor.fetchall()
-            conn.close()
-            return [dict(r) for r in rows]
-        except Exception as e:
-            print("Get Audit Logs Error:", e)
+
+            try:
+                rows = conn.execute(
+                    """
+                    SELECT
+                        id,
+                        action,
+                        details,
+                        performed_by,
+                        timestamp
+                    FROM audit_logs
+                    ORDER BY id DESC
+                    """
+                ).fetchall()
+
+                return [dict(row) for row in rows]
+
+            finally:
+                conn.close()
+
+        except Exception as error:
+            print("Get Audit Logs Error:", error)
             return []
+
+    # ------------------------------------------------------------------
+    # HARDWARE
+    # ------------------------------------------------------------------
 
     def get_all_hardware(self):
         conn = self._get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT id, name, category, stock_qty, unit_price, status,"
-            " condition_status FROM hardware"
-        )
-        rows = cursor.fetchall()
-        conn.close()
 
-        return [
-            {
-                "id": dict(r).get("id", ""),
-                "name": dict(r).get("name", ""),
-                "category": dict(r).get("category", ""),
-                "stock_qty": dict(r).get("stock_qty", 0),
-                "quantity": dict(r).get("stock_qty", 0),
-                "unit_price": float(dict(r).get("unit_price", 0) or 0),
-                "status": self.get_stock_status(dict(r).get("stock_qty", 0)),
-                "condition": dict(r).get("condition_status", "GOOD"),
-            }
-            for r in rows
-        ]
+        try:
+            rows = conn.execute(
+                """
+                SELECT
+                    id,
+                    name,
+                    category,
+                    stock_qty,
+                    unit_price,
+                    status,
+                    condition_status
+                FROM hardware
+                ORDER BY id
+                """
+            ).fetchall()
+
+            result = []
+
+            for row in rows:
+                result.append(
+                    {
+                        "id": row.get("id", ""),
+                        "name": row.get("name", ""),
+                        "category": row.get("category", ""),
+                        "stock_qty": row.get("stock_qty", 0),
+                        "quantity": row.get("stock_qty", 0),
+                        "unit_price": float(
+                            row.get("unit_price", 0) or 0
+                        ),
+                        "status": self.get_stock_status(
+                            row.get("stock_qty", 0)
+                        ),
+                        "condition": row.get(
+                            "condition_status",
+                            "GOOD",
+                        ),
+                    }
+                )
+
+            return result
+
+        finally:
+            conn.close()
 
     @classmethod
     def get_stock_status(cls, stock_qty):
         if stock_qty <= 0:
             return "OUT OF STOCK"
+
         if stock_qty <= cls.LOW_STOCK_LIMIT:
             return "LOW STOCK"
+
         return "IN STOCK"
 
     def add_hardware(
@@ -297,44 +569,78 @@ class HardwareController:
         unit_price=0.0,
     ):
         conn = self._get_connection()
-        cursor = conn.cursor()
-        status = self.get_stock_status(stock_qty)
-        previous = cursor.execute(
-            "SELECT condition_status FROM hardware WHERE id = ?", (item_id,)
-        ).fetchone()
-        cursor.execute(
-            """
-            INSERT OR REPLACE INTO hardware (id, name, category, stock_qty, unit_price, status, condition_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                item_id,
-                name,
-                category,
-                stock_qty,
-                float(unit_price or 0),
-                status,
-                condition.upper(),
-            ),
-        )
-        if previous:
-            self._record_condition_change(
-                conn,
-                item_id,
-                previous["condition_status"],
-                condition,
-                "Inventory item updated",
-                admin_username,
-            )
-        conn.commit()
-        conn.close()
 
-        # Audit Log Trigger
+        try:
+            status = self.get_stock_status(stock_qty)
+
+            previous = conn.execute(
+                """
+                SELECT condition_status
+                FROM hardware
+                WHERE id = %s
+                """,
+                (item_id,),
+            ).fetchone()
+
+            conn.execute(
+                """
+                INSERT INTO hardware
+                (
+                    id,
+                    name,
+                    category,
+                    stock_qty,
+                    unit_price,
+                    status,
+                    condition_status
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (id)
+                DO UPDATE SET
+                    name = EXCLUDED.name,
+                    category = EXCLUDED.category,
+                    stock_qty = EXCLUDED.stock_qty,
+                    unit_price = EXCLUDED.unit_price,
+                    status = EXCLUDED.status,
+                    condition_status =
+                        EXCLUDED.condition_status
+                """,
+                (
+                    item_id,
+                    name,
+                    category,
+                    stock_qty,
+                    float(unit_price or 0),
+                    status,
+                    condition.upper(),
+                ),
+            )
+
+            if previous:
+                self._record_condition_change(
+                    conn,
+                    item_id,
+                    previous.get("condition_status"),
+                    condition,
+                    "Inventory item updated",
+                    admin_username,
+                )
+
+            conn.commit()
+
+        except Exception:
+            conn.rollback()
+            raise
+
+        finally:
+            conn.close()
+
         self.log_audit(
             "ADD_HARDWARE",
             f"Added hardware item {item_id} ({name})",
             performed_by=admin_username,
         )
+
         self.notify_observers()
 
     def update_hardware(
@@ -349,66 +655,105 @@ class HardwareController:
     ):
         try:
             conn = self._get_connection()
-            cursor = conn.cursor()
-            status = self.get_stock_status(stock_qty)
-            previous = cursor.execute(
-                "SELECT condition_status FROM hardware WHERE id = ?", (item_id,)
-            ).fetchone()
-            cursor.execute(
-                """
-                UPDATE hardware
-                SET name = ?, category = ?, stock_qty = ?, unit_price = ?, status = ?, condition_status = ?
-                WHERE id = ?
-                """,
-                (
-                    name,
-                    category,
-                    stock_qty,
-                    float(unit_price or 0),
-                    status,
-                    condition.upper(),
+
+            try:
+                status = self.get_stock_status(stock_qty)
+
+                previous = conn.execute(
+                    """
+                    SELECT condition_status
+                    FROM hardware
+                    WHERE id = %s
+                    """,
+                    (item_id,),
+                ).fetchone()
+
+                if not previous:
+                    return False
+
+                cursor = conn.execute(
+                    """
+                    UPDATE hardware
+                    SET
+                        name = %s,
+                        category = %s,
+                        stock_qty = %s,
+                        unit_price = %s,
+                        status = %s,
+                        condition_status = %s
+                    WHERE id = %s
+                    """,
+                    (
+                        name,
+                        category,
+                        stock_qty,
+                        float(unit_price or 0),
+                        status,
+                        condition.upper(),
+                        item_id,
+                    ),
+                )
+
+                if cursor.rowcount == 0:
+                    conn.rollback()
+                    return False
+
+                self._record_condition_change(
+                    conn,
                     item_id,
-                ),
-            )
-            if cursor.rowcount == 0:
-                conn.rollback()
+                    previous.get("condition_status"),
+                    condition,
+                    "Inventory item edited",
+                    admin_username,
+                )
+
+                conn.commit()
+
+            finally:
                 conn.close()
-                return False
-            self._record_condition_change(
-                conn,
-                item_id,
-                previous["condition_status"],
-                condition,
-                "Inventory item edited",
-                admin_username,
-            )
-            conn.commit()
-            conn.close()
+
             self.log_audit(
                 "EDIT_HARDWARE",
                 f"Updated hardware item {item_id} ({name})",
                 performed_by=admin_username,
             )
+
             self.notify_observers()
+
             return True
-        except Exception as e:
-            print("Hardware Update Error:", e)
+
+        except Exception as error:
+            print("Hardware Update Error:", error)
             return False
 
     def delete_hardware(self, item_id, admin_username="Admin"):
         conn = self._get_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM hardware WHERE id = ?", (item_id,))
-        conn.commit()
-        conn.close()
 
-        # Audit Log Trigger
+        try:
+            conn.execute(
+                """
+                DELETE FROM hardware
+                WHERE id = %s
+                """,
+                (item_id,),
+            )
+
+            conn.commit()
+
+        finally:
+            conn.close()
+
         self.log_audit(
             "DELETE_HARDWARE",
             f"Deleted hardware item {item_id}",
             performed_by=admin_username,
         )
+
         self.notify_observers()
+
+    # ------------------------------------------------------------------
+    # BORROW / RESERVATION
+    # ------------------------------------------------------------------
 
     def create_reservation(
         self,
@@ -423,90 +768,173 @@ class HardwareController:
     ):
         try:
             borrow_qty = int(borrow_qty)
-            start_date = datetime.strptime(borrow_date, "%Y-%m-%d").date()
+
+            start_date = datetime.strptime(
+                borrow_date,
+                "%Y-%m-%d",
+            ).date()
+
             due_date = (
-                datetime.strptime(return_due_date, "%Y-%m-%d").date()
+                datetime.strptime(
+                    return_due_date,
+                    "%Y-%m-%d",
+                ).date()
                 if return_due_date
                 else None
             )
+
             if (
                 borrow_qty <= 0
                 or start_date < date.today()
                 or (due_date and due_date < start_date)
             ):
                 return False
-            conn = self._get_connection()
-            cursor = conn.cursor()
-            item = cursor.execute(
-                "SELECT stock_qty FROM hardware WHERE id = ?", (hardware_id,)
-            ).fetchone()
-            if item is None or item["stock_qty"] < borrow_qty:
-                conn.close()
-                return False
-            cursor.execute(
-                """
-                INSERT INTO borrow_records (username, hardware_id, borrow_qty, borrow_date, return_due_date, status, approved_by, purpose, instructor, transaction_id)
-                VALUES (?, ?, ?, ?, ?, 'PENDING', '-', ?, ?, ?)
-                """,
-                (
-                    username,
-                    hardware_id,
-                    borrow_qty,
-                    borrow_date,
-                    return_due_date,
-                    purpose,
-                    instructor,
-                    transaction_id,
-                ),
-            )
-            conn.commit()
-            conn.close()
 
-            # Audit Log Trigger
+            conn = self._get_connection()
+
+            try:
+                item = conn.execute(
+                    """
+                    SELECT stock_qty
+                    FROM hardware
+                    WHERE id = %s
+                    """,
+                    (hardware_id,),
+                ).fetchone()
+
+                if (
+                    item is None
+                    or item["stock_qty"] < borrow_qty
+                ):
+                    conn.rollback()
+                    return False
+
+                conn.execute(
+                    """
+                    INSERT INTO borrow_records
+                    (
+                        username,
+                        hardware_id,
+                        borrow_qty,
+                        borrow_date,
+                        return_due_date,
+                        status,
+                        approved_by,
+                        purpose,
+                        instructor,
+                        transaction_id
+                    )
+                    VALUES
+                    (
+                        %s, %s, %s, %s, %s,
+                        'PENDING', '-', %s, %s, %s
+                    )
+                    """,
+                    (
+                        username,
+                        hardware_id,
+                        borrow_qty,
+                        borrow_date,
+                        return_due_date,
+                        purpose,
+                        instructor,
+                        transaction_id,
+                    ),
+                )
+
+                conn.commit()
+
+            finally:
+                conn.close()
+
             self.log_audit(
                 "SUBMIT_REQUEST",
                 f"Requested {borrow_qty}x {hardware_id}",
                 performed_by=username,
             )
+
             self.notify_observers()
+
             return True
-        except Exception as e:
-            print("Database Insert Error:", e)
+
+        except Exception as error:
+            print("Database Insert Error:", error)
             return False
 
     def get_all_requests(self):
         conn = self._get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT id, username, hardware_id, borrow_qty, borrow_date, return_due_date, status, approved_by, purpose, instructor, transaction_id
-            FROM borrow_records
-            ORDER BY id DESC
-            """
-        )
-        rows = cursor.fetchall()
-        conn.close()
-        return [dict(r) for r in rows]
+
+        try:
+            rows = conn.execute(
+                """
+                SELECT
+                    id,
+                    username,
+                    hardware_id,
+                    borrow_qty,
+                    borrow_date,
+                    return_due_date,
+                    status,
+                    approved_by,
+                    purpose,
+                    instructor,
+                    transaction_id
+                FROM borrow_records
+                ORDER BY id DESC
+                """
+            ).fetchall()
+
+            return [dict(row) for row in rows]
+
+        finally:
+            conn.close()
 
     def get_requests_by_username(self, username):
         conn = self._get_connection()
-        rows = conn.execute(
-            """
-            SELECT id, hardware_id, borrow_qty, borrow_date, return_due_date, status, approved_by, checked_out_at, returned_at, return_condition, return_notes, transaction_id
-            FROM borrow_records
-            WHERE username = ?
-            ORDER BY id DESC
-            """,
-            (username,),
-        ).fetchall()
-        conn.close()
-        return [dict(row) for row in rows]
+
+        try:
+            rows = conn.execute(
+                """
+                SELECT
+                    id,
+                    hardware_id,
+                    borrow_qty,
+                    borrow_date,
+                    return_due_date,
+                    status,
+                    approved_by,
+                    checked_out_at,
+                    returned_at,
+                    return_condition,
+                    return_notes,
+                    transaction_id
+                FROM borrow_records
+                WHERE username = %s
+                ORDER BY id DESC
+                """,
+                (username,),
+            ).fetchall()
+
+            return [dict(row) for row in rows]
+
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------
+    # SEARCH / STOCK
+    # ------------------------------------------------------------------
 
     def search_hardware(
-        self, search_query="", category="", status="", condition=""
+        self,
+        search_query="",
+        category="",
+        status="",
+        condition="",
     ):
         hardware = self.get_all_hardware()
+
         query = search_query.strip().lower()
+
         return [
             item
             for item in hardware
@@ -515,9 +943,18 @@ class HardwareController:
                 or query in str(item["id"]).lower()
                 or query in item["name"].lower()
             )
-            and (not category or item["category"] == category)
-            and (not status or item["status"] == status)
-            and (not condition or item.get("condition", "GOOD") == condition)
+            and (
+                not category
+                or item["category"] == category
+            )
+            and (
+                not status
+                or item["status"] == status
+            )
+            and (
+                not condition
+                or item.get("condition", "GOOD") == condition
+            )
         ]
 
     def get_low_stock_hardware(self):
@@ -529,131 +966,230 @@ class HardwareController:
 
     def get_overdue_requests(self):
         today = date.today().isoformat()
+
         conn = self._get_connection()
-        rows = conn.execute(
-            """
-            SELECT *
-            FROM borrow_records
-            WHERE status = 'APPROVED' AND return_due_date IS NOT NULL AND return_due_date < ?
-            """,
-            (today,),
-        ).fetchall()
-        conn.close()
-        return [dict(row) for row in rows]
+
+        try:
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM borrow_records
+                WHERE
+                    status = 'APPROVED'
+                    AND return_due_date IS NOT NULL
+                    AND return_due_date < %s
+                """,
+                (today,),
+            ).fetchall()
+
+            return [dict(row) for row in rows]
+
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------
+    # NOTIFICATIONS
+    # ------------------------------------------------------------------
 
     def _build_notifications(self, username=None):
         if username:
             grouped = {}
-            for request in self.get_requests_by_username(username):
-                group_id = request.get("transaction_id") or f"request-{request['id']}"
-                grouped.setdefault(group_id, []).append(request)
+
+            for request in self.get_requests_by_username(
+                username
+            ):
+                group_id = (
+                    request.get("transaction_id")
+                    or f"request-{request['id']}"
+                )
+
+                grouped.setdefault(
+                    group_id,
+                    [],
+                ).append(request)
 
             notifications = []
+
             for group_id, requests in grouped.items():
-                statuses = {request.get("status") for request in requests}
+                statuses = {
+                    request.get("status")
+                    for request in requests
+                }
+
                 if statuses == {"APPROVED"}:
-                    notifications.append((group_id, f"Transaction {group_id} was approved."))
+                    notifications.append(
+                        (
+                            group_id,
+                            f"Transaction {group_id} was approved.",
+                        )
+                    )
+
                 elif statuses == {"DECLINED"}:
-                    notifications.append((group_id, f"Transaction {group_id} was declined."))
+                    notifications.append(
+                        (
+                            group_id,
+                            f"Transaction {group_id} was declined.",
+                        )
+                    )
+
                 elif "RETURN_REQUESTED" in statuses:
-                    notifications.append((group_id, f"Return request for transaction {group_id} is awaiting review."))
+                    notifications.append(
+                        (
+                            group_id,
+                            f"Return request for transaction "
+                            f"{group_id} is awaiting review.",
+                        )
+                    )
+
                 elif statuses & {"APPROVED", "DECLINED"}:
-                    notifications.append((group_id, f"Transaction {group_id} has been partially processed."))
+                    notifications.append(
+                        (
+                            group_id,
+                            f"Transaction {group_id} has been "
+                            f"partially processed.",
+                        )
+                    )
+
             return notifications
 
         metrics = self.get_dashboard_metrics()
+
         notifications = []
+
         if metrics["pending_requests"]:
             notifications.append(
-                f"{metrics['pending_requests']} request(s) need approval."
+                f"{metrics['pending_requests']} request(s) "
+                f"need approval."
             )
+
         if metrics["overdue_requests"]:
             notifications.append(
-                f"{metrics['overdue_requests']} approved item(s) are overdue."
+                f"{metrics['overdue_requests']} approved "
+                f"item(s) are overdue."
             )
+
         if metrics["low_stock_items"]:
             notifications.append(
-                f"{metrics['low_stock_items']} item(s) are low or out of stock."
+                f"{metrics['low_stock_items']} item(s) are "
+                f"low or out of stock."
             )
+
         return notifications
 
     def _sync_notifications(self, username=None):
-        current_notifications = self._build_notifications(username)
+        current_notifications = self._build_notifications(
+            username
+        )
+
         if username:
             existing = {
                 item.get("key"): item
                 for item in self._notifications
                 if item["username"] == username
             }
+
             for key, message in current_notifications:
                 if key in existing:
                     if existing[key]["message"] != message:
                         existing[key]["message"] = message
                         existing[key]["read"] = False
+
                     continue
-                self._notifications.append({
-                    "id": self._notification_id_counter,
-                    "key": key,
-                    "message": message,
-                    "username": username,
-                    "read": False,
-                })
+
+                self._notifications.append(
+                    {
+                        "id": self._notification_id_counter,
+                        "key": key,
+                        "message": message,
+                        "username": username,
+                        "read": False,
+                    }
+                )
+
                 self._notification_id_counter += 1
+
             return
 
         existing = {
             item["message"]: item
             for item in self._notifications
-            if item["username"] == username
+            if item["username"] is None
         }
 
         for message in current_notifications:
             if message not in existing:
-                self._notifications.append({
-                    "id": self._notification_id_counter,
-                    "message": message,
-                    "username": username,
-                    "read": False,
-                })
+                self._notifications.append(
+                    {
+                        "id": self._notification_id_counter,
+                        "message": message,
+                        "username": None,
+                        "read": False,
+                    }
+                )
+
                 self._notification_id_counter += 1
 
     def get_notifications(self, username=None):
         self._sync_notifications(username)
-        notifications = (
-            [
+
+        if username:
+            notifications = [
                 item
                 for item in self._notifications
                 if item["username"] == username
             ]
-            if username
-            else [
-                item for item in self._notifications if item["username"] is None
+        else:
+            notifications = [
+                item
+                for item in self._notifications
+                if item["username"] is None
             ]
-        )
-        return [item["message"] for item in notifications if not item["read"]]
+
+        return [
+            item["message"]
+            for item in notifications
+            if not item["read"]
+        ]
 
     def get_all_notifications(self, username=None):
         self._sync_notifications(username)
+
         if username:
             return [
                 item
                 for item in self._notifications
                 if item["username"] == username
             ]
+
         return [
-            item for item in self._notifications if item["username"] is None
+            item
+            for item in self._notifications
+            if item["username"] is None
         ]
 
-    def mark_notification_read(self, notification_id, username=None):
+    def mark_notification_read(
+        self,
+        notification_id,
+        username=None,
+    ):
         for item in self._notifications:
-            if item["id"] == notification_id and item["username"] == username:
+            if (
+                item["id"] == notification_id
+                and item["username"] == username
+            ):
                 item["read"] = True
                 return True
+
         return False
+
+    # ------------------------------------------------------------------
+    # REPORTS
+    # ------------------------------------------------------------------
 
     def export_report(self, report_type, output_path):
         if report_type == "inventory":
             rows = self.get_all_hardware()
+
             fields = (
                 "id",
                 "name",
@@ -663,8 +1199,10 @@ class HardwareController:
                 "status",
                 "condition",
             )
+
         elif report_type == "requests":
             rows = self.get_all_requests()
+
             fields = (
                 "id",
                 "username",
@@ -677,8 +1215,10 @@ class HardwareController:
                 "purpose",
                 "instructor",
             )
+
         elif report_type == "overdue":
             rows = self.get_overdue_requests()
+
             fields = (
                 "id",
                 "username",
@@ -688,242 +1228,486 @@ class HardwareController:
                 "return_due_date",
                 "status",
             )
+
         elif report_type == "audit":
             rows = self.get_audit_logs()
-            fields = ("id", "action", "details", "performed_by", "timestamp")
+
+            fields = (
+                "id",
+                "action",
+                "details",
+                "performed_by",
+                "timestamp",
+            )
+
         else:
             return False
-        with open(output_path, "w", newline="", encoding="utf-8") as report_file:
-            writer = csv.DictWriter(report_file, fieldnames=fields)
-            writer.writeheader()
-            writer.writerows(
-                {field: row.get(field, "") for field in fields} for row in rows
+
+        with open(
+            output_path,
+            "w",
+            newline="",
+            encoding="utf-8",
+        ) as report_file:
+            writer = csv.DictWriter(
+                report_file,
+                fieldnames=fields,
             )
+
+            writer.writeheader()
+
+            writer.writerows(
+                {
+                    field: row.get(field, "")
+                    for field in fields
+                }
+                for row in rows
+            )
+
         return True
+
+    # ------------------------------------------------------------------
+    # DASHBOARD
+    # ------------------------------------------------------------------
 
     def get_dashboard_metrics(self):
         conn = self._get_connection()
-        hardware = conn.execute(
-            """
-            SELECT COUNT(*) AS count,
-                   COALESCE(SUM(stock_qty), 0) AS quantity,
-                   COALESCE(SUM(stock_qty * unit_price), 0) AS total_value
-            FROM hardware
-            """
-        ).fetchone()
-        requests = conn.execute(
-            "SELECT status, COUNT(*) AS count FROM borrow_records GROUP BY"
-            " status"
-        ).fetchall()
-        conn.close()
-        counts = {row["status"]: row["count"] for row in requests}
-        return {
-            "equipment_types": hardware["count"],
-            "available_units": hardware["quantity"],
-            "total_asset_value": float(hardware["total_value"] or 0),
-            "pending_requests": counts.get("PENDING", 0),
-            "approved_requests": counts.get("APPROVED", 0),
-            "returned_requests": counts.get("RETURNED", 0),
-            "overdue_requests": len(self.get_overdue_requests()),
-            "low_stock_items": len(self.get_low_stock_hardware()),
-        }
+
+        try:
+            hardware = conn.execute(
+                """
+                SELECT
+                    COUNT(*) AS count,
+                    COALESCE(SUM(stock_qty), 0) AS quantity,
+                    COALESCE(
+                        SUM(stock_qty * unit_price),
+                        0
+                    ) AS total_value
+                FROM hardware
+                """
+            ).fetchone()
+
+            requests = conn.execute(
+                """
+                SELECT
+                    status,
+                    COUNT(*) AS count
+                FROM borrow_records
+                GROUP BY status
+                """
+            ).fetchall()
+
+            counts = {
+                row["status"]: row["count"]
+                for row in requests
+            }
+
+            return {
+                "equipment_types": hardware["count"],
+                "available_units": hardware["quantity"],
+                "total_asset_value": float(
+                    hardware["total_value"] or 0
+                ),
+                "pending_requests": counts.get(
+                    "PENDING",
+                    0,
+                ),
+                "approved_requests": counts.get(
+                    "APPROVED",
+                    0,
+                ),
+                "returned_requests": counts.get(
+                    "RETURNED",
+                    0,
+                ),
+                "overdue_requests": len(
+                    self.get_overdue_requests()
+                ),
+                "low_stock_items": len(
+                    self.get_low_stock_hardware()
+                ),
+            }
+
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------
+    # RETURN EQUIPMENT
+    # ------------------------------------------------------------------
 
     def return_request(
-        self, record_id, return_condition, return_notes, admin_username="Admin"
+        self,
+        record_id,
+        return_condition,
+        return_notes,
+        admin_username="Admin",
     ):
         try:
             conn = self._get_connection()
-            record = conn.execute(
-                "SELECT hardware_id, borrow_qty, username, status FROM"
-                " borrow_records WHERE id = ?",
-                (record_id,),
-            ).fetchone()
-            if not record or record["status"] not in (
-                "APPROVED",
-                "RETURN_REQUESTED",
-            ):
-                conn.close()
-                return False
 
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            condition = return_condition.upper()
-            current_item = conn.execute(
-                "SELECT condition_status FROM hardware WHERE id = ?",
-                (record["hardware_id"],),
-            ).fetchone()
-            conn.execute(
-                """
-                UPDATE borrow_records
-                SET status = 'RETURNED', returned_at = ?, return_condition = ?, return_notes = ?, approved_by = ?
-                WHERE id = ? AND status IN ('APPROVED', 'RETURN_REQUESTED')
-                """,
-                (now, condition, return_notes, admin_username, record_id),
-            )
-            if condition != "DAMAGED":
-                current_stock = conn.execute(
-                    "SELECT stock_qty FROM hardware WHERE id = ?",
+            try:
+                record = conn.execute(
+                    """
+                    SELECT
+                        hardware_id,
+                        borrow_qty,
+                        username,
+                        status
+                    FROM borrow_records
+                    WHERE id = %s
+                    """,
+                    (record_id,),
+                ).fetchone()
+
+                if (
+                    not record
+                    or record["status"]
+                    not in (
+                        "APPROVED",
+                        "RETURN_REQUESTED",
+                    )
+                ):
+                    conn.rollback()
+                    return False
+
+                now = datetime.now().strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+
+                condition = return_condition.upper()
+
+                current_item = conn.execute(
+                    """
+                    SELECT condition_status
+                    FROM hardware
+                    WHERE id = %s
+                    """,
                     (record["hardware_id"],),
-                ).fetchone()["stock_qty"]
-                restored_stock = current_stock + record["borrow_qty"]
+                ).fetchone()
+
+                conn.execute(
+                    """
+                    UPDATE borrow_records
+                    SET
+                        status = 'RETURNED',
+                        returned_at = %s,
+                        return_condition = %s,
+                        return_notes = %s,
+                        approved_by = %s
+                    WHERE
+                        id = %s
+                        AND status IN
+                        ('APPROVED', 'RETURN_REQUESTED')
+                    """,
+                    (
+                        now,
+                        condition,
+                        return_notes,
+                        admin_username,
+                        record_id,
+                    ),
+                )
+
+                if condition != "DAMAGED":
+                    current_stock = conn.execute(
+                        """
+                        SELECT stock_qty
+                        FROM hardware
+                        WHERE id = %s
+                        """,
+                        (record["hardware_id"],),
+                    ).fetchone()["stock_qty"]
+
+                    restored_stock = (
+                        current_stock
+                        + record["borrow_qty"]
+                    )
+
+                    conn.execute(
+                        """
+                        UPDATE hardware
+                        SET
+                            stock_qty = %s,
+                            status = %s
+                        WHERE id = %s
+                        """,
+                        (
+                            restored_stock,
+                            self.get_stock_status(
+                                restored_stock
+                            ),
+                            record["hardware_id"],
+                        ),
+                    )
+
                 conn.execute(
                     """
                     UPDATE hardware
-                    SET stock_qty = ?, status = ?
-                    WHERE id = ?
+                    SET condition_status = %s
+                    WHERE id = %s
                     """,
                     (
-                        restored_stock,
-                        self.get_stock_status(restored_stock),
+                        condition,
                         record["hardware_id"],
                     ),
                 )
-            conn.execute(
-                "UPDATE hardware SET condition_status = ? WHERE id = ?",
-                (condition, record["hardware_id"]),
-            )
-            self._record_condition_change(
-                conn,
-                record["hardware_id"],
-                current_item["condition_status"] if current_item else "GOOD",
-                condition,
-                return_notes or "Equipment returned",
-                admin_username,
-            )
-            conn.commit()
-            conn.close()
+
+                self._record_condition_change(
+                    conn,
+                    record["hardware_id"],
+                    (
+                        current_item["condition_status"]
+                        if current_item
+                        else "GOOD"
+                    ),
+                    condition,
+                    return_notes
+                    or "Equipment returned",
+                    admin_username,
+                )
+
+                conn.commit()
+
+            finally:
+                conn.close()
+
             self.log_audit(
                 "RETURN_EQUIPMENT",
-                f"Returned request #{record_id} ({condition})",
+                f"Returned request #{record_id} "
+                f"({condition})",
                 performed_by=admin_username,
             )
+
             self.notify_observers()
+
             return True
+
         except Exception as error:
-            print("Return Processing Error:", error)
+            print(
+                "Return Processing Error:",
+                error,
+            )
             return False
 
+    # ------------------------------------------------------------------
+    # REQUEST STATUS
+    # ------------------------------------------------------------------
+
     def update_request_status(
-        self, record_id, new_status, admin_username="Admin"
+        self,
+        record_id,
+        new_status,
+        admin_username="Admin",
     ):
         try:
             conn = self._get_connection()
-            cursor = conn.cursor()
-            audit_action = None
-            audit_details = None
 
-            if new_status == "APPROVED":
-                cursor.execute(
-                    """
-                    SELECT hardware_id, borrow_qty, username
-                    FROM borrow_records
-                    WHERE id = ? AND status = 'PENDING'
-                    """,
-                    (record_id,),
-                )
-                record = cursor.fetchone()
-                if record:
-                    hw_id, qty, student = (
-                        record["hardware_id"],
-                        record["borrow_qty"],
-                        record["username"],
-                    )
-                    cursor.execute(
+            try:
+                audit_action = None
+                audit_details = None
+
+                if new_status == "APPROVED":
+                    record = conn.execute(
                         """
-                        UPDATE hardware
-                        SET stock_qty = stock_qty - ?
-                        WHERE id = ? AND stock_qty >= ?
+                        SELECT
+                            hardware_id,
+                            borrow_qty,
+                            username
+                        FROM borrow_records
+                        WHERE
+                            id = %s
+                            AND status = 'PENDING'
                         """,
-                        (qty, hw_id, qty),
-                    )
-                    if cursor.rowcount == 0:
-                        conn.rollback()
-                        conn.close()
-                        return False
-                    cursor.execute(
-                        "SELECT stock_qty FROM hardware WHERE id = ?",
-                        (hw_id,),
-                    )
-                    remaining_stock = cursor.fetchone()["stock_qty"]
-                    cursor.execute(
-                        "UPDATE hardware SET status = ? WHERE id = ?",
-                        (self.get_stock_status(remaining_stock), hw_id),
-                    )
-                    audit_action = "APPROVE_REQUEST"
-                    audit_details = (
-                        f"Approved request #{record_id} for {student} ({qty}x"
-                        f" {hw_id})"
-                    )
+                        (record_id,),
+                    ).fetchone()
 
-            elif new_status == "DECLINED":
-                cursor.execute(
+                    if record:
+                        hw_id = record["hardware_id"]
+                        qty = record["borrow_qty"]
+                        student = record["username"]
+
+                        cursor = conn.execute(
+                            """
+                            UPDATE hardware
+                            SET
+                                stock_qty =
+                                    stock_qty - %s
+                            WHERE
+                                id = %s
+                                AND stock_qty >= %s
+                            """,
+                            (
+                                qty,
+                                hw_id,
+                                qty,
+                            ),
+                        )
+
+                        if cursor.rowcount == 0:
+                            conn.rollback()
+                            return False
+
+                        remaining_stock = conn.execute(
+                            """
+                            SELECT stock_qty
+                            FROM hardware
+                            WHERE id = %s
+                            """,
+                            (hw_id,),
+                        ).fetchone()["stock_qty"]
+
+                        conn.execute(
+                            """
+                            UPDATE hardware
+                            SET status = %s
+                            WHERE id = %s
+                            """,
+                            (
+                                self.get_stock_status(
+                                    remaining_stock
+                                ),
+                                hw_id,
+                            ),
+                        )
+
+                        audit_action = (
+                            "APPROVE_REQUEST"
+                        )
+
+                        audit_details = (
+                            f"Approved request "
+                            f"#{record_id} for "
+                            f"{student} ({qty}x {hw_id})"
+                        )
+
+                elif new_status == "DECLINED":
+                    record = conn.execute(
+                        """
+                        SELECT username
+                        FROM borrow_records
+                        WHERE
+                            id = %s
+                            AND status = 'PENDING'
+                        """,
+                        (record_id,),
+                    ).fetchone()
+
+                    if record:
+                        audit_action = (
+                            "DECLINE_REQUEST"
+                        )
+
+                        audit_details = (
+                            f"Declined request "
+                            f"#{record_id} for "
+                            f"{record['username']}"
+                        )
+
+                if not audit_action:
+                    conn.rollback()
+                    return False
+
+                checked_out_at = (
+                    datetime.now().strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    )
+                    if new_status == "APPROVED"
+                    else None
+                )
+
+                conn.execute(
                     """
-                    SELECT username
-                    FROM borrow_records
-                    WHERE id = ? AND status = 'PENDING'
+                    UPDATE borrow_records
+                    SET
+                        status = %s,
+                        approved_by = %s,
+                        checked_out_at =
+                            COALESCE(
+                                %s,
+                                checked_out_at
+                            )
+                    WHERE id = %s
                     """,
-                    (record_id,),
+                    (
+                        new_status,
+                        admin_username,
+                        checked_out_at,
+                        record_id,
+                    ),
                 )
-                record = cursor.fetchone()
-                if record:
-                    audit_action = "DECLINE_REQUEST"
-                    audit_details = (
-                        f"Declined request #{record_id} for"
-                        f" {record['username']}"
-                    )
 
-            if not audit_action:
-                conn.rollback()
+                conn.commit()
+
+            finally:
                 conn.close()
-                return False
-            checked_out_at = (
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                if new_status == "APPROVED"
-                else None
+
+            self.log_audit(
+                audit_action,
+                audit_details,
+                performed_by=admin_username,
             )
-            cursor.execute(
-                """
-                UPDATE borrow_records
-                SET status = ?, approved_by = ?, checked_out_at = COALESCE(?, checked_out_at)
-                WHERE id = ?
-                """,
-                (new_status, admin_username, checked_out_at, record_id),
-            )
-            conn.commit()
-            conn.close()
-            if audit_action:
-                self.log_audit(
-                    audit_action, audit_details, performed_by=admin_username
-                )
+
             self.notify_observers()
+
             return True
-        except Exception as e:
-            print("Error updating request status:", e)
+
+        except Exception as error:
+            print(
+                "Error updating request status:",
+                error,
+            )
             return False
 
-    def request_return(self, record_id, username):
+    # ------------------------------------------------------------------
+    # REQUEST RETURN
+    # ------------------------------------------------------------------
+
+    def request_return(
+        self,
+        record_id,
+        username,
+    ):
         try:
             conn = self._get_connection()
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                UPDATE borrow_records
-                SET status = 'RETURN_REQUESTED'
-                WHERE id = ? AND username = ? AND status = 'APPROVED'
-                """,
-                (record_id, username),
-            )
-            if cursor.rowcount == 0:
+
+            try:
+                cursor = conn.execute(
+                    """
+                    UPDATE borrow_records
+                    SET status = 'RETURN_REQUESTED'
+                    WHERE
+                        id = %s
+                        AND username = %s
+                        AND status = 'APPROVED'
+                    """,
+                    (
+                        record_id,
+                        username,
+                    ),
+                )
+
+                if cursor.rowcount == 0:
+                    conn.rollback()
+                    return False
+
+                conn.commit()
+
+            finally:
                 conn.close()
-                return False
-            conn.commit()
-            conn.close()
+
             self.log_audit(
                 "RETURN_REQUESTED",
                 f"Return requested for record #{record_id}",
                 performed_by=username,
             )
+
             self.notify_observers()
+
             return True
+
         except Exception as error:
-            print("Return Request Error:", error)
+            print(
+                "Return Request Error:",
+                error,
+            )
             return False

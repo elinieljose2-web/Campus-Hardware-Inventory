@@ -1,30 +1,51 @@
-import sqlite3
 import os
 
+import psycopg
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
+
 class Database:
-    def __init__(self, db_name="hardware_inventory.db"):
-        # Points directly to hardware_inventory.db in the root project folder
-        self.db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), db_name)
-        
-        # Fallback to current working directory if root resolution differs
-        if not os.path.exists(self.db_path):
-            self.db_path = db_name
+    def __init__(self):
+        self.database_url = os.getenv("DATABASE_URL")
+
+        if not self.database_url:
+            raise RuntimeError(
+                "DATABASE_URL is not configured. "
+                "Please add your Supabase PostgreSQL connection string to .env."
+            )
 
     def get_connection(self):
-        return sqlite3.connect(self.db_path)
+        return psycopg.connect(self.database_url)
 
     def fetch_all(self, query, params=()):
         conn = self.get_connection()
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute(query, params)
-        rows = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        return rows
+
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(query, params)
+                columns = [desc.name for desc in cursor.description]
+                rows = cursor.fetchall()
+
+                return [
+                    dict(zip(columns, row))
+                    for row in rows
+                ]
+        finally:
+            conn.close()
 
     def execute(self, query, params=()):
         conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute(query, params)
-        conn.commit()
-        conn.close()
+
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(query, params)
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
